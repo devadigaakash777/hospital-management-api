@@ -22,4 +22,4 @@ jobs:
           cache: 'maven'
 
       - name: Run tests
-        run: mvn clean test -DincludeTags=integration
+        run: mvn clean test

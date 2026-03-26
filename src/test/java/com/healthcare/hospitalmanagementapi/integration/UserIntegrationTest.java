@@ -10,7 +10,6 @@ import com.healthcare.hospitalmanagementapi.user.entity.User;
 import com.healthcare.hospitalmanagementapi.user.entity.UserGroup;
 import com.healthcare.hospitalmanagementapi.user.repository.UserGroupRepository;
 import com.healthcare.hospitalmanagementapi.user.repository.UserRepository;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -36,7 +35,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @Testcontainers
