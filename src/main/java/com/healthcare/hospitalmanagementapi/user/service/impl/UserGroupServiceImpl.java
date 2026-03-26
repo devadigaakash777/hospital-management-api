@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +29,8 @@ public class UserGroupServiceImpl implements UserGroupService {
     private final UserGroupRepository userGroupRepository;
     private final DepartmentRepository departmentRepository;
     private final UserGroupMapper userGroupMapper;
+    private static final String GROUP_NOT_FOUND_MESSAGE = "Group not found";
+
 
     @Override
     @CachePut(key = "#result.id")
@@ -74,7 +75,7 @@ public class UserGroupServiceImpl implements UserGroupService {
     public UserGroupResponseDTO getUserGroupById(UUID id) {
 
         UserGroup userGroup = userGroupRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("UserGroup not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(GROUP_NOT_FOUND_MESSAGE));
 
         return userGroupMapper.toResponseDTO(userGroup);
     }
@@ -97,7 +98,7 @@ public class UserGroupServiceImpl implements UserGroupService {
     public UserGroupResponseDTO updateUserGroup(UUID id, UpdateUserGroupRequestDTO dto) {
 
         UserGroup userGroup = userGroupRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("UserGroup not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(GROUP_NOT_FOUND_MESSAGE));
 
         if (dto.getGroupName() != null &&
                 !dto.getGroupName().equals(userGroup.getGroupName()) &&
@@ -137,7 +138,7 @@ public class UserGroupServiceImpl implements UserGroupService {
     public void deleteUserGroup(UUID id) {
 
         UserGroup userGroup = userGroupRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("UserGroup not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(GROUP_NOT_FOUND_MESSAGE));
 
         userGroupRepository.delete(userGroup);
 
@@ -163,16 +164,5 @@ public class UserGroupServiceImpl implements UserGroupService {
         log.info("UserGroup restored with id: {}", id);
 
         return userGroupMapper.toResponseDTO(saved);
-    }
-
-    private void setDepartments(UserGroup userGroup, Set<UUID> departmentIds) {
-
-        if (departmentIds != null && !departmentIds.isEmpty()) {
-
-            Set<Department> departments = new HashSet<>(departmentRepository
-                    .findAllById(departmentIds));
-
-            userGroup.setDepartments(departments);
-        }
     }
 }

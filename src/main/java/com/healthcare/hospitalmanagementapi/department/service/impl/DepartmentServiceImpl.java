@@ -26,6 +26,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     private final DepartmentRepository departmentRepository;
     private final DepartmentMapper departmentMapper;
+    private static final String DEPARTMENT_NOT_FOUND_MESSAGE = "Department not found";
 
     @Override
     @CachePut(key = "#result.id")
@@ -50,7 +51,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     public DepartmentResponseDTO getDepartmentById(UUID id) {
 
         Department department = departmentRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(DEPARTMENT_NOT_FOUND_MESSAGE));
 
         return departmentMapper.toResponseDTO(department);
     }
@@ -73,7 +74,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     public DepartmentResponseDTO updateDepartment(UUID id, UpdateDepartmentRequestDTO dto) {
 
         Department department = departmentRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(DEPARTMENT_NOT_FOUND_MESSAGE));
 
         if (dto.getDepartmentName() != null &&
                 !dto.getDepartmentName().equals(department.getDepartmentName()) &&
@@ -95,7 +96,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     public void deleteDepartment(UUID id) {
 
         Department department = departmentRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(DEPARTMENT_NOT_FOUND_MESSAGE));
 
         departmentRepository.delete(department);
 
@@ -107,7 +108,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     public DepartmentResponseDTO restoreDepartment(UUID id) {
 
         Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(DEPARTMENT_NOT_FOUND_MESSAGE));
 
         if (!Boolean.TRUE.equals(department.getIsDeleted())) {
             throw new ConflictException("Department is already active and cannot be restored");

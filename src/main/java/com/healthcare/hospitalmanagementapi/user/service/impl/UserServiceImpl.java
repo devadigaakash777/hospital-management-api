@@ -4,7 +4,6 @@ import com.healthcare.hospitalmanagementapi.auth.security.CustomUserDetails;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.BadRequestException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;
-import com.healthcare.hospitalmanagementapi.common.exception.custom.UnauthorizedException;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
 import com.healthcare.hospitalmanagementapi.department.entity.Department;
 import com.healthcare.hospitalmanagementapi.department.repository.DepartmentRepository;
@@ -29,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,17 +41,24 @@ public class UserServiceImpl implements UserService {
     private final UserGroupRepository userGroupRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private static final String USER_NOT_FOUND_MESSAGE = "User not found";
 
     @Override
     @CachePut(key = "#result.id")
     public UserResponseDTO createUser(CreateUserRequestDTO dto) {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        CustomUserDetails currentUser = (CustomUserDetails) auth.getPrincipal();
 
-        if (dto.getRole() == Role.ADMIN && currentUser.getRole() != Role.ADMIN) {
-            throw new ConflictException("Only ADMIN can create another ADMIN user");
+        CustomUserDetails currentUser = null;
+
+        if (auth != null && auth.getPrincipal() instanceof CustomUserDetails customUserDetails) {
+            currentUser = customUserDetails;
         }
+
+        if (currentUser != null && dto.getRole() == Role.ADMIN && currentUser.getRole() != Role.ADMIN) {
+                throw new ConflictException("Only ADMIN can create another ADMIN user");
+            }
+
 
         if (userRepository.existsByEmailAndIsDeletedFalse(dto.getEmail())) {
             throw new ConflictException("Email already exists");
@@ -76,16 +81,7 @@ public class UserServiceImpl implements UserService {
     @Cacheable(key = "#id")
     public UserResponseDTO getUserById(UUID id) {
         User user = userRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        return userMapper.toResponseDTO(user);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public UserResponseDTO getUserByEmail(String email) {
-        User user = userRepository.findByEmailAndIsDeletedFalse(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MESSAGE));
 
         return userMapper.toResponseDTO(user);
     }
@@ -108,7 +104,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO updateUser(UUID id, UpdateUserRequestDTO dto) {
 
         User user = userRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MESSAGE));
 
         if (dto.getEmail() != null &&
                 !dto.getEmail().equals(user.getEmail()) &&
@@ -131,7 +127,7 @@ public class UserServiceImpl implements UserService {
     @CacheEvict(key = "#id")
     public void deleteUser(UUID id) {
         User user = userRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MESSAGE));
 
         userRepository.delete(user);
 
@@ -140,7 +136,7 @@ public class UserServiceImpl implements UserService {
 
     public UserResponseDTO restoreUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MESSAGE));
 
         return restoreUser(user.getId());
     }
@@ -150,7 +146,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO restoreUser(UUID id) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MESSAGE));
 
         if (!Boolean.TRUE.equals(user.getIsDeleted())) {
             throw new ConflictException("User is already active and cannot be restored");
@@ -170,7 +166,7 @@ public class UserServiceImpl implements UserService {
     public void changePassword(UUID id, ChangePasswordRequestDTO dto) {
 
         User user = userRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MESSAGE));
 
         if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword())) {
             throw new BadRequestException("Old password is incorrect");

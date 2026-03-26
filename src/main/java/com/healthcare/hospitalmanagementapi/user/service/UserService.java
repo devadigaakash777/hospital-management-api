@@ -11,8 +11,6 @@ public interface UserService {
 
     UserResponseDTO getUserById(UUID id);
 
-    UserResponseDTO getUserByEmail(String email);
-
     PageResponse<UserResponseDTO> getAllUsers(int page, int size);
 
     UserResponseDTO updateUser(UUID id, UpdateUserRequestDTO dto);

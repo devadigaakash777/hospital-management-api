@@ -1,4 +1,4 @@
-package com.healthcare.hospitalmanagementapi.user.service;
+package com.healthcare.hospitalmanagementapi.unit.user.service;
 
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;
@@ -63,7 +63,7 @@ class UserGroupServiceImplTest {
 
     @Test
     void shouldCreateUserGroup_whenValidInput() {
-        UUID deptId = createDTO.getDepartmentIds().iterator().next();
+        UUID deptId = createDTO.getDepartmentIds().getFirst();
 
         Department dept = new Department();
         dept.setId(deptId);

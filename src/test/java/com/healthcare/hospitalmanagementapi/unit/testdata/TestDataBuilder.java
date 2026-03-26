@@ -1,4 +1,4 @@
-package com.healthcare.hospitalmanagementapi.common.testdata;
+package com.healthcare.hospitalmanagementapi.unit.testdata;
 
 import com.healthcare.hospitalmanagementapi.enums.Role;
 import com.healthcare.hospitalmanagementapi.user.dto.user.ChangePasswordRequestDTO;

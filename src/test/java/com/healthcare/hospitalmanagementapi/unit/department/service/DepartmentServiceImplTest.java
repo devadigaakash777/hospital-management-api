@@ -1,4 +1,4 @@
-package com.healthcare.hospitalmanagementapi.department.service;
+package com.healthcare.hospitalmanagementapi.unit.department.service;
 
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;

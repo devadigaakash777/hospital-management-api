@@ -2,7 +2,6 @@ package com.healthcare.hospitalmanagementapi.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthcare.hospitalmanagementapi.common.exception.dto.ErrorResponse;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.AuthenticationException;
@@ -25,7 +24,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     public void commence(HttpServletRequest request,
                          HttpServletResponse response,
                          AuthenticationException authException)
-            throws IOException, ServletException {
+            throws IOException {
 
         ErrorResponse error = ErrorResponse.builder()
                 .code("UNAUTHORIZED")

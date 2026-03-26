@@ -1,4 +1,4 @@
-package com.healthcare.hospitalmanagementapi.user.controller;
+package com.healthcare.hospitalmanagementapi.unit.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthcare.hospitalmanagementapi.user.dto.group.*;

@@ -2,7 +2,6 @@ package com.healthcare.hospitalmanagementapi.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthcare.hospitalmanagementapi.common.exception.dto.ErrorResponse;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +21,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
     @Override
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
-                       AccessDeniedException ex) throws IOException, ServletException {
+                       AccessDeniedException ex) throws IOException {
 
         ErrorResponse error = ErrorResponse.builder()
                 .code("FORBIDDEN")

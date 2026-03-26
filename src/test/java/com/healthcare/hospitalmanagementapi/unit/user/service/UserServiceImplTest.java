@@ -1,16 +1,12 @@
-package com.healthcare.hospitalmanagementapi.user.service;
+package com.healthcare.hospitalmanagementapi.unit.user.service;
 
 import com.healthcare.hospitalmanagementapi.common.exception.custom.*;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
-import com.healthcare.hospitalmanagementapi.common.testdata.TestDataBuilder;
-import com.healthcare.hospitalmanagementapi.department.entity.Department;
-import com.healthcare.hospitalmanagementapi.department.repository.DepartmentRepository;
+import com.healthcare.hospitalmanagementapi.unit.testdata.TestDataBuilder;
 import com.healthcare.hospitalmanagementapi.enums.Role;
 import com.healthcare.hospitalmanagementapi.user.dto.user.*;
 import com.healthcare.hospitalmanagementapi.user.entity.User;
-import com.healthcare.hospitalmanagementapi.user.entity.UserGroup;
 import com.healthcare.hospitalmanagementapi.user.mapper.UserMapper;
-import com.healthcare.hospitalmanagementapi.user.repository.UserGroupRepository;
 import com.healthcare.hospitalmanagementapi.user.repository.UserRepository;
 import com.healthcare.hospitalmanagementapi.user.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.*;
@@ -30,8 +26,6 @@ import static org.mockito.Mockito.*;
 class UserServiceImplTest {
 
     @Mock private UserRepository userRepository;
-    @Mock private DepartmentRepository departmentRepository;
-    @Mock private UserGroupRepository userGroupRepository;
     @Mock private UserMapper userMapper;
     @Mock private PasswordEncoder passwordEncoder;
 
@@ -193,7 +187,7 @@ class UserServiceImplTest {
         assertThat(response.getContent()).hasSize(1);
         assertThat(response.getTotalElements()).isEqualTo(1);
 
-        assertThat(response.getPageNumber()).isEqualTo(0);
+        assertThat(response.getPageNumber()).isZero();
         assertThat(response.getPageSize()).isEqualTo(10);
         assertThat(response.getTotalPages()).isEqualTo(1);
         assertThat(response.isLast()).isTrue();

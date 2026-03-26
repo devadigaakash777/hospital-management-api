@@ -3,9 +3,9 @@ spring:
     name: hospital-management-api
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/hospital_management_db
-    username: postgres
-    password: root123
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   cache:
