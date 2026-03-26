@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,7 +22,7 @@ public class CreateUserGroupRequestDTO {
     private String groupName;
 
     @Schema(description = "Department IDs assigned to this group")
-    private Set<UUID> departmentIds;
+    private List<UUID> departmentIds;
 
     private Boolean canManageDoctorSlots;
 

@@ -28,6 +28,7 @@ public class UserGroupController {
     @ApiResponse(responseCode = "201", description = "User group created successfully")
     @ApiResponse(responseCode = "400", description = "Invalid input")
     @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "409", description = "Duplicate department IDs are not allowed")
     @PreAuthorize("hasAuthority('CAN_MANAGE_GROUPS')")
     @PostMapping
     public ResponseEntity<UserGroupResponseDTO> createUserGroup(
@@ -62,6 +63,7 @@ public class UserGroupController {
     @ApiResponse(responseCode = "200", description = "User group updated successfully")
     @ApiResponse(responseCode = "404", description = "User group not found")
     @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "409", description = "Duplicate department IDs are not allowed")
     @PreAuthorize("hasAuthority('CAN_MANAGE_GROUPS')")
     @PatchMapping("/{groupId}")
     public ResponseEntity<UserGroupResponseDTO> updateUserGroup(

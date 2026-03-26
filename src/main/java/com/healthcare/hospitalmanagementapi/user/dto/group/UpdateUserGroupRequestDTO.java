@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -19,7 +20,7 @@ public class UpdateUserGroupRequestDTO {
     private String groupName;
 
     @Schema(description = "Updated department IDs for this group")
-    private Set<UUID> departmentIds;
+    private List<UUID> departmentIds;
 
     private Boolean canManageDoctorSlots;
 

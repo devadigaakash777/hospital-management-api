@@ -112,7 +112,7 @@ public class UserGroupServiceImpl implements UserGroupService {
             Set<UUID> uniqueDeptIds = new HashSet<>(dto.getDepartmentIds());
 
             if (uniqueDeptIds.size() != dto.getDepartmentIds().size()) {
-                throw new IllegalArgumentException("Duplicate department IDs are not allowed");
+                throw new ConflictException("Duplicate department IDs are not allowed");
             }
 
             List<Department> departments =

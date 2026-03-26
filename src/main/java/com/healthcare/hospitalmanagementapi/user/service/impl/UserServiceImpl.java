@@ -204,17 +204,21 @@ public class UserServiceImpl implements UserService {
 
             user.setGroup(null);
 
-            if (departmentIds != null && !departmentIds.isEmpty()) {
+            if (departmentIds != null) {
 
-                Set<Department> departments = new HashSet<>(
-                        departmentRepository.findAllById(departmentIds)
-                );
+                if (departmentIds.isEmpty()) {
+                    user.getDepartments().clear();
+                } else {
+                    Set<Department> departments = new HashSet<>(
+                            departmentRepository.findAllById(departmentIds)
+                    );
 
-                if (departments.size() != departmentIds.size()) {
-                    throw new ResourceNotFoundException("One or more departments not found");
+                    if (departments.size() != departmentIds.size()) {
+                        throw new ResourceNotFoundException("One or more departments not found");
+                    }
+
+                    user.setDepartments(departments);
                 }
-
-                user.setDepartments(departments);
             }
         }
     }
