@@ -70,6 +70,19 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<DepartmentResponseDTO> searchDepartments(String keyword, int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+        Page<Department> departments = departmentRepository.searchDepartments(keyword, pageable);
+
+        Page<DepartmentResponseDTO> dtoPage = departments.map(departmentMapper::toResponseDTO);
+
+        return new PageResponse<>(dtoPage);
+    }
+
+    @Override
     @CachePut(key = "#id")
     public DepartmentResponseDTO updateDepartment(UUID id, UpdateDepartmentRequestDTO dto) {
 

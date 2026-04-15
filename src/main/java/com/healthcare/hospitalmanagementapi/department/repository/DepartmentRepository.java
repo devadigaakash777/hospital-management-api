@@ -10,6 +10,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 public interface DepartmentRepository extends JpaRepository<Department, UUID> {
 
     Optional<Department> findByIdAndIsDeletedFalse(UUID id);
@@ -19,4 +22,12 @@ public interface DepartmentRepository extends JpaRepository<Department, UUID> {
     List<Department> findAllByIdInAndIsDeletedFalse(Set<UUID> ids);
 
     boolean existsByDepartmentNameAndIsDeletedFalse(String departmentName);
+
+    @Query("""
+        SELECT d
+        FROM Department d
+        WHERE d.isDeleted = false
+        AND LOWER(d.departmentName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        """)
+    Page<Department> searchDepartments(@Param("keyword") String keyword, Pageable pageable);
 }

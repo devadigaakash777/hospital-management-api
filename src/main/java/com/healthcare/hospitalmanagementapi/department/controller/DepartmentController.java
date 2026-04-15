@@ -71,6 +71,17 @@ public class DepartmentController {
         return ResponseEntity.ok(departmentService.updateDepartment(departmentId, request));
     }
 
+    @Operation(summary = "Search departments")
+    @ApiResponse(responseCode = "200", description = "Departments fetched successfully")
+    @GetMapping("/search")
+    public ResponseEntity<PageResponse<DepartmentResponseDTO>> searchDepartments(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(departmentService.searchDepartments(keyword, page, size));
+    }
+
     @Operation(summary = "Delete department (soft delete)")
     @ApiResponse(responseCode = "204", description = "Department deleted successfully")
     @ApiResponse(responseCode = "404", description = "Department not found")

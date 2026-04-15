@@ -179,6 +179,19 @@ public class UserServiceImpl implements UserService {
         log.info("Password changed for user id: {}", id);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserResponseDTO> searchUsers(String keyword, int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+        Page<User> users = userRepository.searchUsers(keyword, pageable);
+
+        Page<UserResponseDTO> dtoPage = users.map(userMapper::toResponseDTO);
+
+        return new PageResponse<>(dtoPage);
+    }
+
     private void applyGroupOrUserLogic(User user, Set<UUID> departmentIds, UUID groupId) {
 
         if (groupId != null) {

@@ -132,4 +132,16 @@ public class UserController {
         userService.changePassword(userId, request);
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(summary = "Search users")
+    @ApiResponse(responseCode = "200", description = "Users fetched successfully")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_STAFF') or hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
+    @GetMapping("/search")
+    public ResponseEntity<PageResponse<UserResponseDTO>> searchUsers(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(userService.searchUsers(keyword, page, size));
+    }
 }

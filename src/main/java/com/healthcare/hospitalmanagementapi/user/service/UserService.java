@@ -22,4 +22,6 @@ public interface UserService {
     public UserResponseDTO restoreUserByEmail(String email);
 
     void changePassword(UUID id, ChangePasswordRequestDTO dto);
+
+    PageResponse<UserResponseDTO> searchUsers(String keyword, int page, int size);
 }

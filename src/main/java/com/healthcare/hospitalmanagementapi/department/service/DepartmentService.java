@@ -18,4 +18,6 @@ public interface DepartmentService {
     void deleteDepartment(UUID id);
 
     public DepartmentResponseDTO restoreDepartment(UUID id);
+
+    PageResponse<DepartmentResponseDTO> searchDepartments(String keyword, int page, int size);
 }

@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
@@ -19,5 +21,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmailAndIsDeletedFalse(String email);
 
     Page<User> findAllByIsDeletedFalse(Pageable pageable);
+
+    @Query("""
+        SELECT u
+        FROM User u
+        WHERE u.isDeleted = false
+        AND (
+            LOWER(u.firstName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        )
+        """)
+    Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
 
 }
