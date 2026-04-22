@@ -12,6 +12,7 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -41,6 +42,12 @@ public class Doctor extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id", nullable = false)
     private Department department;
+
+    @OneToMany(mappedBy = "doctor", fetch = FetchType.LAZY)
+    private List<DoctorWeeklySchedule> weeklySchedules;
+
+    @OneToMany(mappedBy = "doctor", fetch = FetchType.LAZY)
+    private List<DoctorBlockedDate> blockedDates;
 
     @Column(name = "qualification", nullable = false, length = 255)
     private String qualification;

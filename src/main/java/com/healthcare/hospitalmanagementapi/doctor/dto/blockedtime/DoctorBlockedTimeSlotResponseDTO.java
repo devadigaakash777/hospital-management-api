@@ -32,9 +32,6 @@ public class DoctorBlockedTimeSlotResponseDTO {
     @Schema(example = "16:00:00", description = "End time of the blocked period")
     private LocalTime endTime;
 
-    @Schema(example = "2", description = "Number of slots that were already reserved when this block was applied")
-    private Integer reservedSlots;
-
     @Schema(example = "Doctor attending a medical conference", description = "Reason for blocking this time slot")
     private String blockReason;
 }

@@ -18,7 +18,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Schema(description = "Basic doctor information used for search suggestions")
-public class DoctorShortResponseDTO {
+public class DoctorAvailabilityResponseDTO {
 
     @Schema(
             example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -31,4 +31,16 @@ public class DoctorShortResponseDTO {
             description = "Full name of the doctor"
     )
     private String fullName;
+
+    @Schema(description = "Doctor weekly schedules")
+    private List<DoctorWeeklyScheduleResponseDTO> weeklySchedules;
+
+    @Schema(description = "Doctor blocked dates")
+    private List<DoctorBlockedDateResponseDTO> blockedDates;
+
+    @Schema(
+            example = "30",
+            description = "Number of days in advance that appointments can be booked"
+    )
+    private Integer advanceBookingDays;
 }

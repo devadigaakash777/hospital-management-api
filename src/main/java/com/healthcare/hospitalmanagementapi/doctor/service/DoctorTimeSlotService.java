@@ -6,6 +6,7 @@ import com.healthcare.hospitalmanagementapi.doctor.dto.timeslot.UpdateDoctorTime
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
 
 public interface DoctorTimeSlotService {
 
@@ -26,4 +27,10 @@ public interface DoctorTimeSlotService {
     );
 
     List<DoctorTimeSlotResponseDTO> getAllByDoctor(UUID doctorId);
+
+    List<DoctorTimeSlotResponseDTO> getAvailableSlots(
+            UUID doctorId,
+            LocalDate appointmentDate,
+            boolean isVip
+    );
 }

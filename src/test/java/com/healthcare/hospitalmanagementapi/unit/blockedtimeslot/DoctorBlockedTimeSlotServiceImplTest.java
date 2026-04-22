@@ -78,14 +78,12 @@ class DoctorBlockedTimeSlotServiceImplTest {
                 .blockedDate(LocalDate.now().plusDays(1))
                 .startTime(LocalTime.of(10, 0))
                 .endTime(LocalTime.of(12, 0))
-                .reservedSlots(2)
                 .blockReason("Conference")
                 .build();
 
         updateRequest = UpdateDoctorBlockedTimeSlotRequestDTO.builder()
                 .startTime(LocalTime.of(11, 0))
                 .endTime(LocalTime.of(13, 0))
-                .reservedSlots(3)
                 .blockReason("Updated reason")
                 .build();
 
@@ -95,7 +93,6 @@ class DoctorBlockedTimeSlotServiceImplTest {
                 .blockedDate(createRequest.getBlockedDate())
                 .startTime(createRequest.getStartTime())
                 .endTime(createRequest.getEndTime())
-                .reservedSlots(2)
                 .blockReason("Conference")
                 .build();
     }

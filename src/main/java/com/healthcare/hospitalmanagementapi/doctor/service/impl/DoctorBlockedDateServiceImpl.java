@@ -1,5 +1,7 @@
 package com.healthcare.hospitalmanagementapi.doctor.service.impl;
 
+import com.healthcare.hospitalmanagementapi.appointment.entity.Appointment;
+import com.healthcare.hospitalmanagementapi.appointment.repository.AppointmentRepository;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
@@ -13,6 +15,7 @@ import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorBlockedDateR
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorRepository;
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorTimeSlotRepository;
 import com.healthcare.hospitalmanagementapi.doctor.service.DoctorBlockedDateService;
+import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheConfig;
@@ -26,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -35,6 +39,7 @@ import java.util.UUID;
 @CacheConfig(cacheNames = "doctorBlockedDates")
 public class DoctorBlockedDateServiceImpl implements DoctorBlockedDateService {
 
+    private final AppointmentRepository appointmentRepository;
     private final DoctorBlockedDateRepository doctorBlockedDateRepository;
     private final DoctorRepository doctorRepository;
     private final DoctorBlockedDateMapper doctorBlockedDateMapper;
@@ -65,6 +70,21 @@ public class DoctorBlockedDateServiceImpl implements DoctorBlockedDateService {
         blockedDate.setDoctor(doctor);
 
         DoctorBlockedDate saved = doctorBlockedDateRepository.save(blockedDate);
+
+        List<Appointment> appointments = appointmentRepository
+                .findAllByDoctorIdAndAppointmentDateAndAppointmentStatusInAndIsDeletedFalse(
+                        doctorId,
+                        dto.getBlockedDate(),
+                        List.of(
+                                AppointmentStatus.CONFIRMED
+                        )
+                );
+
+        appointments.forEach(appointment ->
+                appointment.setAppointmentStatus(AppointmentStatus.CANCELLED)
+        );
+
+        appointmentRepository.saveAll(appointments);
 
         log.info(
                 "Doctor blocked date created. doctorId={}, blockedDateId={}",

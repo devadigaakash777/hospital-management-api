@@ -69,7 +69,6 @@ class DoctorBlockedTimeSlotControllerTest {
                 .blockedDate(LocalDate.now().plusDays(1))
                 .startTime(LocalTime.of(10, 0))
                 .endTime(LocalTime.of(12, 0))
-                .reservedSlots(2)
                 .blockReason("Conference")
                 .build();
     }
@@ -82,7 +81,6 @@ class DoctorBlockedTimeSlotControllerTest {
                         .blockedDate(LocalDate.now().plusDays(1))
                         .startTime(LocalTime.of(10, 0))
                         .endTime(LocalTime.of(12, 0))
-                        .reservedSlots(2)
                         .blockReason("Conference")
                         .build();
 
@@ -117,7 +115,6 @@ class DoctorBlockedTimeSlotControllerTest {
     void shouldReturnBadRequest_whenCreateBlockedTimeSlotWithInvalidRequest() throws Exception {
         CreateDoctorBlockedTimeSlotRequestDTO request =
                 CreateDoctorBlockedTimeSlotRequestDTO.builder()
-                        .reservedSlots(-1)
                         .blockReason("a".repeat(1001))
                         .build();
 
@@ -129,8 +126,8 @@ class DoctorBlockedTimeSlotControllerTest {
                 .andExpect(jsonPath("$.errors.blockedDate").value("Blocked date is required"))
                 .andExpect(jsonPath("$.errors.startTime").value("Start time is required"))
                 .andExpect(jsonPath("$.errors.endTime").value("End time is required"))
-                .andExpect(jsonPath("$.errors.reservedSlots")
-                        .value("Reserved slots cannot be negative"));
+                .andExpect(jsonPath("$.errors.blockReason")
+                        .value("Block reason must not exceed 1000 characters"));
     }
 
     @Test
@@ -264,7 +261,6 @@ class DoctorBlockedTimeSlotControllerTest {
     void shouldReturnBadRequest_whenPatchBlockedTimeSlotWithInvalidRequest() throws Exception {
         UpdateDoctorBlockedTimeSlotRequestDTO request =
                 UpdateDoctorBlockedTimeSlotRequestDTO.builder()
-                        .reservedSlots(-1)
                         .blockReason("a".repeat(1001))
                         .build();
 
@@ -276,8 +272,8 @@ class DoctorBlockedTimeSlotControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.errors.reservedSlots")
-                        .value("Reserved slots cannot be negative"));
+                .andExpect(jsonPath("$.errors.blockReason")
+                        .value("Block reason must not exceed 1000 characters"));
     }
 
     @Test

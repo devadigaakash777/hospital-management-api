@@ -1,10 +1,7 @@
 package com.healthcare.hospitalmanagementapi.doctor.controller;
 
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.CreateDoctorRequestDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.DoctorResponseDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.DoctorShortResponseDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.UpdateDoctorRequestDTO;
+import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.*;
 import com.healthcare.hospitalmanagementapi.doctor.service.DoctorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -65,9 +62,7 @@ public class DoctorController {
             @RequestBody @Valid CreateDoctorRequestDTO request
     ) {
         DoctorResponseDTO response = doctorService.createDoctor(request);
-
         URI location = URI.create("/api/v1/doctors/" + response.getId());
-
         return ResponseEntity.created(location).body(response);
     }
 
@@ -94,7 +89,6 @@ public class DoctorController {
                 pageable.getPageNumber(),
                 pageable.getPageSize()
         );
-
         return ResponseEntity.ok(response);
     }
 
@@ -111,7 +105,6 @@ public class DoctorController {
                 pageable.getPageNumber(),
                 pageable.getPageSize()
         );
-
         return ResponseEntity.ok(response);
     }
 
@@ -124,7 +117,6 @@ public class DoctorController {
             @PathVariable UUID departmentId
     ) {
         List<DoctorShortResponseDTO> response = doctorService.getDoctorsByDepartment(departmentId);
-
         return ResponseEntity.ok(response);
     }
 
@@ -144,7 +136,6 @@ public class DoctorController {
                 pageable.getPageNumber(),
                 pageable.getPageSize()
         );
-
         return ResponseEntity.ok(response);
     }
 
@@ -188,5 +179,24 @@ public class DoctorController {
             @PathVariable UUID doctorId
     ) {
         return ResponseEntity.ok(doctorService.restoreDoctor(doctorId));
+    }
+
+    @Operation(summary = "Get doctor availability", description = "Fetch the doctor's weekly schedules and blocked dates using the doctor ID"
+    )
+    @ApiResponse(responseCode = "200", description = "Doctor availability fetched successfully",
+            content = @Content(
+                    schema = @Schema(implementation = DoctorAvailabilityResponseDTO.class)
+            )
+    )
+    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @GetMapping("/{doctorId}/availability")
+    public ResponseEntity<DoctorAvailabilityResponseDTO> getDoctorAvailability(
+            @Parameter(
+                    description = "Unique identifier of the doctor",
+                    required = true
+            )
+            @PathVariable UUID doctorId
+    ) {
+        return ResponseEntity.ok(doctorService.getDoctorAvailability(doctorId));
     }
 }

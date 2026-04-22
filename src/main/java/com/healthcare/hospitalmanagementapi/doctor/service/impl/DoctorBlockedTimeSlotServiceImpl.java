@@ -1,5 +1,7 @@
 package com.healthcare.hospitalmanagementapi.doctor.service.impl;
 
+import com.healthcare.hospitalmanagementapi.appointment.entity.Appointment;
+import com.healthcare.hospitalmanagementapi.appointment.repository.AppointmentRepository;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
@@ -12,6 +14,7 @@ import com.healthcare.hospitalmanagementapi.doctor.mapper.DoctorBlockedTimeSlotM
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorBlockedTimeSlotRepository;
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorRepository;
 import com.healthcare.hospitalmanagementapi.doctor.service.DoctorBlockedTimeSlotService;
+import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -26,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -35,6 +39,7 @@ import java.util.UUID;
 @CacheConfig(cacheNames = "doctorBlockedTimeSlots")
 public class DoctorBlockedTimeSlotServiceImpl implements DoctorBlockedTimeSlotService {
 
+    private final AppointmentRepository appointmentRepository;
     private final DoctorBlockedTimeSlotRepository doctorBlockedTimeSlotRepository;
     private final DoctorRepository doctorRepository;
     private final DoctorBlockedTimeSlotMapper doctorBlockedTimeSlotMapper;
@@ -74,6 +79,21 @@ public class DoctorBlockedTimeSlotServiceImpl implements DoctorBlockedTimeSlotSe
         blockedTimeSlot.setBatchId(null);
 
         DoctorBlockedTimeSlot saved = doctorBlockedTimeSlotRepository.save(blockedTimeSlot);
+
+        List<Appointment> appointments = appointmentRepository
+                .findAllByDoctorIdAndAppointmentDateAndAppointmentStatusInAndAppointmentTimeGreaterThanEqualAndAppointmentTimeLessThanAndIsDeletedFalse(
+                        doctorId,
+                        dto.getBlockedDate(),
+                        List.of(AppointmentStatus.CONFIRMED),
+                        dto.getStartTime(),
+                        dto.getEndTime()
+                );
+
+        appointments.forEach(appointment ->
+                appointment.setAppointmentStatus(AppointmentStatus.CANCELLED)
+        );
+
+        appointmentRepository.saveAll(appointments);
 
         log.info(
                 "Doctor blocked time slot created. doctorId={}, blockedTimeSlotId={}",

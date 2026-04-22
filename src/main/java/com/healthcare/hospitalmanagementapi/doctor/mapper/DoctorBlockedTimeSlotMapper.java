@@ -12,10 +12,7 @@ public interface DoctorBlockedTimeSlotMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "batchId", ignore = true)
     @Mapping(target = "doctor", ignore = true)
-    @Mapping(
-            target = "reservedSlots",
-            expression = "java(dto.getReservedSlots() != null ? dto.getReservedSlots() : 0)"
-    )
+    @Mapping(target = "reservedSlots", constant = "0")
     @Mapping(target = "isDeleted", constant = "false")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
@@ -26,6 +23,7 @@ public interface DoctorBlockedTimeSlotMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "batchId", ignore = true)
     @Mapping(target = "doctor", ignore = true)
+    @Mapping(target = "reservedSlots", ignore = true)
     @Mapping(target = "blockedDate", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

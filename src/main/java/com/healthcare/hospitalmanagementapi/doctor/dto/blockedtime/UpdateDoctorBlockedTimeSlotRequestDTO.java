@@ -24,13 +24,6 @@ public class UpdateDoctorBlockedTimeSlotRequestDTO {
     @Schema(example = "17:00:00", description = "Updated end time of the blocked period")
     private LocalTime endTime;
 
-    @Min(value = 0, message = "Reserved slots cannot be negative")
-    @Schema(
-            example = "3",
-            description = "Optional updated number of reserved appointment slots"
-    )
-    private Integer reservedSlots;
-
     @Size(max = 1000, message = "Block reason must not exceed 1000 characters")
     @Schema(example = "Doctor delayed due to surgery", description = "Updated reason for blocking this time slot")
     private String blockReason;

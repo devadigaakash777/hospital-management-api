@@ -11,11 +11,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -117,5 +119,57 @@ public class DoctorTimeSlotController {
     ) {
         doctorTimeSlotService.delete(doctorId, slotId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Get available doctor time slots",
+            description = """
+                Returns all doctor time slots available for the selected appointment date.
+
+                Availability is calculated by:
+                - Doctor weekly schedule
+                - Blocked dates
+                - Blocked time slots
+                - Slot capacity
+                - VIP slot capacity when isVip=true
+                """
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Available doctor time slots fetched successfully",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DoctorTimeSlotResponseDTO.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = """
+                Invalid request:
+                - Appointment date is missing or invalid
+                - Appointment date is outside advance booking limit
+                """
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = """
+                Invalid request:
+                - Doctor is not available
+                """
+    )
+    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @GetMapping("/available")
+    public ResponseEntity<List<DoctorTimeSlotResponseDTO>> getAvailableSlots(
+            @PathVariable UUID doctorId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate appointmentDate,
+            @RequestParam(defaultValue = "false") boolean isVip
+    ) {
+        return ResponseEntity.ok(
+                doctorTimeSlotService.getAvailableSlots(
+                        doctorId,
+                        appointmentDate,
+                        isVip
+                )
+        );
     }
 }

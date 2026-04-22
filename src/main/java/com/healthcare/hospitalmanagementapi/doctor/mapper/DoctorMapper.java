@@ -1,13 +1,23 @@
 package com.healthcare.hospitalmanagementapi.doctor.mapper;
 
 import com.healthcare.hospitalmanagementapi.department.dto.DepartmentResponseDTO;
+import com.healthcare.hospitalmanagementapi.doctor.dto.blockeddate.DoctorBlockedDateResponseDTO;
 import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.*;
+import com.healthcare.hospitalmanagementapi.doctor.dto.weeklyschedule.DoctorWeeklyScheduleResponseDTO;
 import com.healthcare.hospitalmanagementapi.doctor.entity.Doctor;
 import org.mapstruct.*;
 
+import java.util.List;
+
 import static org.mapstruct.NullValuePropertyMappingStrategy.IGNORE;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        uses = {
+                DoctorWeeklyScheduleMapper.class,
+                DoctorBlockedDateMapper.class
+        }
+)
 public interface DoctorMapper {
 
     @Mapping(target = "id", ignore = true)
@@ -49,6 +59,17 @@ public interface DoctorMapper {
                 .departmentName(doctor.getDepartment().getDepartmentName())
                 .build();
     }
+
+    @Mapping(target = "id", source = "doctor.id")
+    @Mapping(target = "fullName", expression = "java(getFullName(doctor))")
+    @Mapping(target = "advanceBookingDays", source = "doctor.advanceBookingDays")
+    @Mapping(target = "weeklySchedules", source = "weeklySchedules")
+    @Mapping(target = "blockedDates", source = "blockedDates")
+    DoctorAvailabilityResponseDTO toAvailabilityResponseDTO(
+            Doctor doctor,
+            List<DoctorWeeklyScheduleResponseDTO> weeklySchedules,
+            List<DoctorBlockedDateResponseDTO> blockedDates
+    );
 
     @Mapping(target = "fullName", expression = "java(getFullName(doctor))")
     DoctorShortResponseDTO toShortResponseDTO(Doctor doctor);

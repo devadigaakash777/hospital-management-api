@@ -1,10 +1,7 @@
 package com.healthcare.hospitalmanagementapi.doctor.service;
 
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.CreateDoctorRequestDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.DoctorResponseDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.DoctorShortResponseDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.UpdateDoctorRequestDTO;
+import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +23,8 @@ public interface DoctorService {
     DoctorResponseDTO updateDoctor(UUID id, UpdateDoctorRequestDTO dto);
 
     void deleteDoctor(UUID id);
+
+    DoctorAvailabilityResponseDTO getDoctorAvailability(UUID doctorId);
 
     DoctorResponseDTO restoreDoctor(UUID id);
 }

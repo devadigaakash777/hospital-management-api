@@ -5,12 +5,14 @@ import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotF
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
 import com.healthcare.hospitalmanagementapi.department.entity.Department;
 import com.healthcare.hospitalmanagementapi.department.repository.DepartmentRepository;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.CreateDoctorRequestDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.DoctorResponseDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.DoctorShortResponseDTO;
-import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.UpdateDoctorRequestDTO;
+import com.healthcare.hospitalmanagementapi.doctor.dto.blockeddate.DoctorBlockedDateResponseDTO;
+import com.healthcare.hospitalmanagementapi.doctor.dto.doctor.*;
+import com.healthcare.hospitalmanagementapi.doctor.dto.weeklyschedule.DoctorWeeklyScheduleResponseDTO;
 import com.healthcare.hospitalmanagementapi.doctor.entity.Doctor;
+import com.healthcare.hospitalmanagementapi.doctor.mapper.DoctorBlockedDateMapper;
 import com.healthcare.hospitalmanagementapi.doctor.mapper.DoctorMapper;
+import com.healthcare.hospitalmanagementapi.doctor.mapper.DoctorWeeklyScheduleMapper;
+import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorBlockedDateRepository;
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorRepository;
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorTimeSlotRepository;
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorWeeklyScheduleRepository;
@@ -51,6 +53,10 @@ public class DoctorServiceImpl implements DoctorService {
     private final DoctorMapper doctorMapper;
     private final DoctorWeeklyScheduleRepository weeklyScheduleRepository;
     private final DoctorTimeSlotRepository timeSlotRepository;
+    private final DoctorBlockedDateRepository doctorBlockedDateRepository;
+
+    private final DoctorWeeklyScheduleMapper weeklyScheduleMapper;
+    private final DoctorBlockedDateMapper doctorBlockedDateMapper;
 
     @Override
     @CachePut(key = "#result.id")
@@ -131,6 +137,38 @@ public class DoctorServiceImpl implements DoctorService {
         return doctors.stream()
                 .map(doctorMapper::toShortResponseDTO)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "doctorAvailability", key = "#doctorId")
+    public DoctorAvailabilityResponseDTO getDoctorAvailability(UUID doctorId) {
+
+        Doctor doctor = doctorRepository.findByIdAndIsDeletedFalse(doctorId)
+                .orElseThrow(() -> new ResourceNotFoundException(DOCTOR_NOT_FOUND_MESSAGE));
+
+        List<DoctorWeeklyScheduleResponseDTO> weeklySchedules =
+                weeklyScheduleRepository.findAllByDoctorId(doctorId)
+                        .stream()
+                        .map(weeklyScheduleMapper::toResponseDTO)
+                        .toList();
+
+        List<DoctorBlockedDateResponseDTO> blockedDates =
+                doctorBlockedDateRepository
+                        .findAllByDoctor_IdAndIsDeletedFalse(
+                                doctorId,
+                                Pageable.unpaged()
+                        )
+                        .getContent()
+                        .stream()
+                        .map(doctorBlockedDateMapper::toResponseDTO)
+                        .toList();
+
+        return doctorMapper.toAvailabilityResponseDTO(
+                doctor,
+                weeklySchedules,
+                blockedDates
+        );
     }
 
     @Override
