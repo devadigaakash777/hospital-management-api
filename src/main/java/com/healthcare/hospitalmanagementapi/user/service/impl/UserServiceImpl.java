@@ -46,18 +46,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @CachePut(key = "#result.id")
     public UserResponseDTO createUser(CreateUserRequestDTO dto) {
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        CustomUserDetails currentUser = null;
-
-        if (auth != null && auth.getPrincipal() instanceof CustomUserDetails customUserDetails) {
-            currentUser = customUserDetails;
-        }
-
-        if (currentUser != null && dto.getRole() == Role.ADMIN && currentUser.getRole() != Role.ADMIN) {
-                throw new ConflictException("Only ADMIN can create another ADMIN user");
-            }
+        validateAdminAssignment(dto.getRole());
 
 
         if (userRepository.existsByEmailAndIsDeletedFalse(dto.getEmail())) {
@@ -106,6 +95,9 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MESSAGE));
 
+        validateAdminAccessForTarget(user);
+        validateAdminAssignment(dto.getRole());
+
         if (dto.getEmail() != null &&
                 !dto.getEmail().equals(user.getEmail()) &&
                 userRepository.existsByEmailAndIsDeletedFalse(dto.getEmail())) {
@@ -128,6 +120,8 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(UUID id) {
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MESSAGE));
+
+        validateAdminAccessForTarget(user);
 
         userRepository.delete(user);
 
@@ -228,6 +222,34 @@ public class UserServiceImpl implements UserService {
 
                     user.setDepartments(departments);
                 }
+            }
+        }
+    }
+
+    private CustomUserDetails getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth != null && auth.getPrincipal() instanceof CustomUserDetails customUserDetails) {
+            return customUserDetails;
+        }
+
+        throw new ConflictException("Authenticated user not found");
+    }
+
+    private void validateAdminAccessForTarget(User targetUser) {
+        CustomUserDetails currentUser = getCurrentUser();
+
+        if (targetUser.getRole() == Role.ADMIN && currentUser.getRole() != Role.ADMIN) {
+            throw new ConflictException("Only ADMIN can modify ADMIN user");
+        }
+    }
+
+    private void validateAdminAssignment(Role role) {
+        if (role == Role.ADMIN) {
+            CustomUserDetails currentUser = getCurrentUser();
+
+            if (currentUser.getRole() != Role.ADMIN) {
+                throw new ConflictException("Only ADMIN can assign ADMIN role");
             }
         }
     }

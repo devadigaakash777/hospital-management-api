@@ -1,5 +1,6 @@
 package com.healthcare.hospitalmanagementapi.doctor.service.impl;
 
+import com.healthcare.hospitalmanagementapi.appointment.repository.AppointmentRepository;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
@@ -32,6 +33,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
+
+import java.time.LocalDate;
+import java.util.Set;
 
 import java.util.List;
 import java.util.UUID;
@@ -54,6 +59,7 @@ public class DoctorServiceImpl implements DoctorService {
     private final DoctorWeeklyScheduleRepository weeklyScheduleRepository;
     private final DoctorTimeSlotRepository timeSlotRepository;
     private final DoctorBlockedDateRepository doctorBlockedDateRepository;
+    private final AppointmentRepository appointmentRepository;
 
     private final DoctorWeeklyScheduleMapper weeklyScheduleMapper;
     private final DoctorBlockedDateMapper doctorBlockedDateMapper;
@@ -191,6 +197,8 @@ public class DoctorServiceImpl implements DoctorService {
         Doctor doctor = doctorRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException(DOCTOR_NOT_FOUND_MESSAGE));
 
+        Integer previousAdvanceBookingDays = doctor.getAdvanceBookingDays();
+
         if (dto.getDepartmentId() != null) {
             Department department = departmentRepository.findByIdAndIsDeletedFalse(dto.getDepartmentId())
                     .orElseThrow(() -> new ResourceNotFoundException(DEPARTMENT_NOT_FOUND_MESSAGE));
@@ -201,6 +209,29 @@ public class DoctorServiceImpl implements DoctorService {
         doctorMapper.updateEntity(dto, doctor);
 
         Doctor updated = doctorRepository.save(doctor);
+
+        if (dto.getAdvanceBookingDays() != null
+                && dto.getAdvanceBookingDays() < previousAdvanceBookingDays) {
+
+            LocalDate lastAllowedDate = LocalDate.now()
+                    .plusDays(dto.getAdvanceBookingDays());
+
+            int cancelledCount = appointmentRepository.cancelAppointmentsBeyondAdvanceBookingLimit(
+                    updated.getId(),
+                    lastAllowedDate,
+                    AppointmentStatus.CANCELLED,
+                    Set.of(
+                            AppointmentStatus.CANCELLED,
+                            AppointmentStatus.COMPLETED
+                    )
+            );
+
+            log.info(
+                    "Cancelled {} appointments beyond advance booking limit for doctorId={}",
+                    cancelledCount,
+                    updated.getId()
+            );
+        }
 
         log.info("Doctor updated with id: {}", id);
 

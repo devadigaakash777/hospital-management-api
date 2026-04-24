@@ -5,6 +5,7 @@ import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -185,5 +186,21 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             Collection<AppointmentStatus> statuses,
             LocalTime startTime,
             LocalTime endTime
+    );
+
+    @Modifying
+    @Query("""
+        UPDATE Appointment a
+        SET a.appointmentStatus = :cancelledStatus
+        WHERE a.doctorId = :doctorId
+          AND a.appointmentDate > :lastAllowedDate
+          AND a.appointmentStatus NOT IN :excludedStatuses
+          AND a.isDeleted = false
+        """)
+    int cancelAppointmentsBeyondAdvanceBookingLimit(
+            @Param("doctorId") UUID doctorId,
+            @Param("lastAllowedDate") LocalDate lastAllowedDate,
+            @Param("cancelledStatus") AppointmentStatus cancelledStatus,
+            @Param("excludedStatuses") Collection<AppointmentStatus> excludedStatuses
     );
 }

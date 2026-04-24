@@ -460,11 +460,15 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (appointmentDate.equals(LocalDate.now())) {
             LocalTime currentTime = LocalTime.now();
 
-            LocalTime latestAllowedTime = doctorTimeSlot.getStartTime().plusMinutes(15);
+            LocalTime cutoffTime = doctorTimeSlot.getEndTime().minusMinutes(15);
 
-            if (!currentTime.isBefore(latestAllowedTime)) {
+            if (cutoffTime.isBefore(doctorTimeSlot.getStartTime())) {
+                cutoffTime = doctorTimeSlot.getStartTime();
+            }
+
+            if (!currentTime.isBefore(cutoffTime)) {
                 throw new ConflictException(
-                        "Booking is allowed only within 15 minutes after the slot start time"
+                        "Booking is allowed only until 15 minutes before the slot end time"
                 );
             }
         }
