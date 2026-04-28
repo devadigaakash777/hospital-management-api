@@ -15,9 +15,9 @@ import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorBlockedTimeS
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorRepository;
 import com.healthcare.hospitalmanagementapi.doctor.service.DoctorBlockedTimeSlotService;
 import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -171,14 +171,10 @@ public class DoctorBlockedTimeSlotServiceImpl implements DoctorBlockedTimeSlotSe
         LocalDate currentDate = LocalDate.now();
         LocalTime currentTime = getLocalTime(requestDTO, blockedTimeSlot, currentDate);
 
-
         if (requestDTO.getEndTime() != null && blockedTimeSlot.getBlockedDate().isEqual(currentDate)
-                    && !requestDTO.getEndTime().isAfter(currentTime)) {
-                throw new ConflictException(
-                        "End time must be greater than current time"
-                );
-            }
-
+                && !requestDTO.getEndTime().isAfter(currentTime)) {
+            throw new ConflictException("End time must be greater than current time");
+        }
 
         doctorBlockedTimeSlotMapper.updateEntityFromDto(requestDTO, blockedTimeSlot);
 
@@ -192,7 +188,11 @@ public class DoctorBlockedTimeSlotServiceImpl implements DoctorBlockedTimeSlotSe
         return doctorBlockedTimeSlotMapper.toResponseDTO(updatedBlockedTimeSlot);
     }
 
-    private static @NotNull LocalTime getLocalTime(UpdateDoctorBlockedTimeSlotRequestDTO requestDTO, DoctorBlockedTimeSlot blockedTimeSlot, LocalDate currentDate) {
+    private static @NotNull LocalTime getLocalTime(
+            UpdateDoctorBlockedTimeSlotRequestDTO requestDTO,
+            DoctorBlockedTimeSlot blockedTimeSlot,
+            LocalDate currentDate
+    ) {
         LocalTime currentTime = LocalTime.now();
 
         if (blockedTimeSlot.getBlockedDate().isBefore(currentDate)) {
@@ -200,11 +200,12 @@ public class DoctorBlockedTimeSlotServiceImpl implements DoctorBlockedTimeSlotSe
         }
 
         if (requestDTO.getStartTime() != null && blockedTimeSlot.getBlockedDate().isEqual(currentDate)
-                    && !currentTime.isBefore(blockedTimeSlot.getStartTime())) {
-                throw new ConflictException(
-                        "Start time can only be updated before the blocked slot start time"
-                );
-            }
+                && !currentTime.isBefore(blockedTimeSlot.getStartTime())) {
+            throw new ConflictException(
+                    "Start time can only be updated before the blocked slot start time"
+            );
+        }
+
         return currentTime;
     }
 

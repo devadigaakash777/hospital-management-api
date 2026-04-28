@@ -21,8 +21,14 @@ public class EmailVerificationToken {
     @Column(nullable = false, length = 6)
     private String otp;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String payload;
+
+    @Column(name = "user_id")
+    private UUID userId;
+
+    @Column(name = "pending_email", length = 150)
+    private String pendingEmail;
 
     @Column(nullable = false)
     private LocalDateTime expiresAt;

@@ -3,7 +3,6 @@ package com.healthcare.hospitalmanagementapi.unit.testdata;
 import com.healthcare.hospitalmanagementapi.enums.Role;
 import com.healthcare.hospitalmanagementapi.user.dto.user.ChangePasswordRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.user.CreateUserRequestDTO;
-import com.healthcare.hospitalmanagementapi.user.dto.user.UpdateUserRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.user.UserResponseDTO;
 import com.healthcare.hospitalmanagementapi.user.entity.User;
 
@@ -29,12 +28,6 @@ public class TestDataBuilder {
                 .password("password123")
                 .role(Role.STAFF)
                 .build();
-    }
-
-    public static UpdateUserRequestDTO updateDTO(String email) {
-        UpdateUserRequestDTO dto = new UpdateUserRequestDTO();
-        dto.setEmail(email);
-        return dto;
     }
 
     public static ChangePasswordRequestDTO passwordDTO() {

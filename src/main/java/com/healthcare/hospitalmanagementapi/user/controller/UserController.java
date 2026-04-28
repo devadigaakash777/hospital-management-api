@@ -2,6 +2,7 @@ package com.healthcare.hospitalmanagementapi.user.controller;
 
 import com.healthcare.hospitalmanagementapi.auth.security.CustomUserDetails;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
+import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailChangeRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.user.*;
 import com.healthcare.hospitalmanagementapi.user.service.UserService;
@@ -39,7 +40,7 @@ public class UserController {
             @RequestBody @Valid CreateUserRequestDTO request
     ) {
         userService.initiateUserCreation(request);
-        return ResponseEntity.accepted().build();   // 202 Accepted
+        return ResponseEntity.accepted().build();
     }
 
     @Operation(summary = "Verify email OTP — completes user creation")
@@ -51,7 +52,7 @@ public class UserController {
     ) {
         UserResponseDTO response = userService.verifyEmail(request);
         URI location = URI.create("/api/v1/users/" + response.getId());
-        return ResponseEntity.created(location).body(response);   // 201 Created
+        return ResponseEntity.created(location).body(response);
     }
 
     @Operation(summary = "Resend OTP for a pending user")
@@ -64,7 +65,35 @@ public class UserController {
             @RequestParam String email
     ) {
         userService.resendOtp(email);
-        return ResponseEntity.noContent().build();   // 204
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Initiate email change — sends OTP to new email address")
+    @ApiResponse(responseCode = "202", description = "OTP sent to new email address")
+    @ApiResponse(responseCode = "400", description = "New email is the same as current, or invalid input")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    @ApiResponse(responseCode = "409", description = "New email already in use")
+    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @PreAuthorize("@userSecurity.isSelfOrAdmin(#userId) or hasAuthority('CAN_MANAGE_STAFF')")
+    @PostMapping("/{userId}/change-email")
+    public ResponseEntity<Void> initiateEmailChange(
+            @PathVariable UUID userId,
+            @RequestBody @Valid ChangeEmailRequestDTO request
+    ) {
+        userService.initiateEmailChange(userId, request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @Operation(summary = "Verify OTP — applies the email change")
+    @ApiResponse(responseCode = "200", description = "Email updated successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid or expired OTP")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    @ApiResponse(responseCode = "409", description = "New email already in use")
+    @PostMapping("/verify-email-change")
+    public ResponseEntity<UserResponseDTO> verifyEmailChange(
+            @RequestBody @Valid VerifyEmailChangeRequestDTO request
+    ) {
+        return ResponseEntity.ok(userService.verifyEmailChange(request));
     }
 
     @Operation(summary = "Get user by ID")
@@ -84,13 +113,9 @@ public class UserController {
     @ApiResponse(responseCode = "404", description = "User not found")
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getCurrentUser() {
-
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
-
-        return ResponseEntity.ok(
-                userService.getUserById(userDetails.getUser().getId())
-        );
+        return ResponseEntity.ok(userService.getUserById(userDetails.getUser().getId()));
     }
 
     @Operation(summary = "Get all users with pagination")

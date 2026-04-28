@@ -2,7 +2,6 @@ package com.healthcare.hospitalmanagementapi.user.dto.user;
 
 import com.healthcare.hospitalmanagementapi.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -23,11 +22,6 @@ public class UpdateUserRequestDTO {
     @Size(max = 100)
     @Schema(example = "Doe", description = "Last name of the user")
     private String lastName;
-
-    @Email
-    @Size(max = 150)
-    @Schema(example = "john.doe@example.com", description = "Email address of the user")
-    private String email;
 
     @Schema(example = "STAFF", description = "Role assigned to the user")
     private Role role;

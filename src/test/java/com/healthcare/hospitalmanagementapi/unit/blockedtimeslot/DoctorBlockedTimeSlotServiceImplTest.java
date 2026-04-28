@@ -1,5 +1,6 @@
 package com.healthcare.hospitalmanagementapi.unit.blockedtimeslot;
 
+import com.healthcare.hospitalmanagementapi.appointment.repository.AppointmentRepository;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
@@ -43,6 +44,9 @@ class DoctorBlockedTimeSlotServiceImplTest {
 
     @Mock
     private DoctorBlockedTimeSlotMapper blockedTimeSlotMapper;
+
+    @Mock
+    private AppointmentRepository appointmentRepository;
 
     @InjectMocks
     private DoctorBlockedTimeSlotServiceImpl service;

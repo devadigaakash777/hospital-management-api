@@ -1,6 +1,7 @@
 package com.healthcare.hospitalmanagementapi.user.service;
 
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
+import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailChangeRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.user.*;
 
@@ -22,11 +23,15 @@ public interface UserService {
 
     void deleteUser(UUID id);
 
-    public UserResponseDTO restoreUser(UUID id);
+    UserResponseDTO restoreUser(UUID id);
 
-    public UserResponseDTO restoreUserByEmail(String email);
+    UserResponseDTO restoreUserByEmail(String email);
 
     void changePassword(UUID id, ChangePasswordRequestDTO dto);
 
     PageResponse<UserResponseDTO> searchUsers(String keyword, int page, int size);
+
+    void initiateEmailChange(UUID userId, ChangeEmailRequestDTO dto);
+
+    UserResponseDTO verifyEmailChange(VerifyEmailChangeRequestDTO dto);
 }

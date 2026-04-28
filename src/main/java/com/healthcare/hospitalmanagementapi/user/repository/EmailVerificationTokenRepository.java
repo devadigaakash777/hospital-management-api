@@ -15,6 +15,10 @@ public interface EmailVerificationTokenRepository extends JpaRepository<EmailVer
 
     Optional<EmailVerificationToken> findByEmailAndOtp(String email, String otp);
 
+    Optional<EmailVerificationToken> findByEmailAndOtpAndUserId(String email, String otp, UUID userId);
+
+    Optional<EmailVerificationToken> findByUserId(UUID userId);
+
     boolean existsByEmail(String email);
 
     @Modifying

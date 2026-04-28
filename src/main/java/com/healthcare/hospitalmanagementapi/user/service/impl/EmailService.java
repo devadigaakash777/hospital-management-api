@@ -7,6 +7,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -39,6 +41,24 @@ public class EmailService {
 
         } catch (Exception ex) {
             log.error("Failed to send OTP email to {}: {}", toEmail, ex.getMessage());
+        }
+    }
+
+    @Async
+    public void sendBulkEmail(List<String> emails, String subject, String message) {
+        for (String email : emails) {
+            try {
+                SimpleMailMessage msg = new SimpleMailMessage();
+                msg.setTo(email);
+                msg.setSubject(subject);
+                msg.setText(message);
+
+                mailSender.send(msg);
+                log.info("Email sent to {}", email);
+
+            } catch (Exception ex) {
+                log.error("Failed to send email to {}: {}", email, ex.getMessage());
+            }
         }
     }
 }
