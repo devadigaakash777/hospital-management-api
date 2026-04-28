@@ -4,10 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthcare.hospitalmanagementapi.department.entity.Department;
 import com.healthcare.hospitalmanagementapi.department.repository.DepartmentRepository;
 import com.healthcare.hospitalmanagementapi.enums.Role;
+import com.healthcare.hospitalmanagementapi.support.WithMockAdmin;
 import com.healthcare.hospitalmanagementapi.user.dto.user.CreateUserRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.user.UpdateUserRequestDTO;
+import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailRequestDTO;
+import com.healthcare.hospitalmanagementapi.user.entity.EmailVerificationToken;
 import com.healthcare.hospitalmanagementapi.user.entity.User;
 import com.healthcare.hospitalmanagementapi.user.entity.UserGroup;
+import com.healthcare.hospitalmanagementapi.user.repository.EmailVerificationTokenRepository;
 import com.healthcare.hospitalmanagementapi.user.repository.UserGroupRepository;
 import com.healthcare.hospitalmanagementapi.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +22,6 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -28,6 +31,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,14 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@WithMockUser(
-        username = "admin@test.com",
-        authorities = {
-                "ROLE_ADMIN",
-                "CAN_MANAGE_STAFF",
-                "CAN_MANAGE_DOCTOR_SLOTS"
-        }
-)
+@WithMockAdmin
 class UserIntegrationTest {
 
     @Container
@@ -64,20 +61,12 @@ class UserIntegrationTest {
         registry.add("spring.datasource.password", postgres::getPassword);
     }
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private UserGroupRepository userGroupRepository;
-
-    @Autowired
-    private DepartmentRepository departmentRepository;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private UserRepository userRepository;
+    @Autowired private UserGroupRepository userGroupRepository;
+    @Autowired private DepartmentRepository departmentRepository;
+    @Autowired private EmailVerificationTokenRepository tokenRepository;
 
     private Department department1;
     private Department department2;
@@ -86,12 +75,10 @@ class UserIntegrationTest {
     @BeforeEach
     void setup() {
         department1 = departmentRepository.save(
-                Department.builder().departmentName("Cardiology").build()
-        );
+                Department.builder().departmentName("Cardiology").build());
 
         department2 = departmentRepository.save(
-                Department.builder().departmentName("Neurology").build()
-        );
+                Department.builder().departmentName("Neurology").build());
 
         userGroup = userGroupRepository.save(
                 UserGroup.builder()
@@ -99,42 +86,80 @@ class UserIntegrationTest {
                         .canManageStaff(true)
                         .canManageDoctorSlots(true)
                         .departments(Set.of(department1, department2))
-                        .build()
-        );
+                        .build());
     }
 
-    private CreateUserRequestDTO createValidUserRequest() {
+    private CreateUserRequestDTO validCreateRequest() {
         return CreateUserRequestDTO.builder()
                 .firstName("John")
                 .lastName("Doe")
                 .email("john.doe@test.com")
                 .password("Password123")
-                .role(Role.ADMIN)
+                .role(Role.STAFF)
                 .groupId(userGroup.getId())
                 .build();
     }
 
-    @Test
-    void shouldCreateUser_withGroupAndDepartments() throws Exception {
+    private void initiateAndVerify(CreateUserRequestDTO request) throws Exception {
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted());
 
-        CreateUserRequestDTO request = createValidUserRequest();
+        EmailVerificationToken token = tokenRepository
+                .findByEmail(request.getEmail())
+                .orElseThrow(() -> new AssertionError("OTP token not saved for: " + request.getEmail()));
+
+        VerifyEmailRequestDTO verifyDto = VerifyEmailRequestDTO.builder()
+                .email(request.getEmail())
+                .otp(token.getOtp())
+                .build();
+
+        mockMvc.perform(post("/api/v1/users/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verifyDto)))
+                .andExpect(status().isCreated());
+    }
+
+    private User savedUser(String email) {
+        return userRepository.save(
+                User.builder()
+                        .firstName("Test").lastName("User")
+                        .email(email).password("pass")
+                        .role(Role.STAFF)
+                        .build());
+    }
+
+    @Test
+    void shouldCreateUser_afterOtpVerification() throws Exception {
+        CreateUserRequestDTO request = validCreateRequest();
+
+        initiateAndVerify(request);
+
+        User saved = userRepository.findByEmailAndIsDeletedFalse("john.doe@test.com")
+                .orElseThrow();
+
+        assertThat(saved.getEmail()).isEqualTo("john.doe@test.com");
+        assertThat(saved.getGroup()).isNotNull();
+        assertThat(saved.getDepartments()).hasSize(2);
+        assertThat(tokenRepository.findByEmail("john.doe@test.com")).isEmpty();
+    }
+
+    @Test
+    void shouldReturn202_andNotCreateUser_beforeOtpVerification() throws Exception {
+        CreateUserRequestDTO request = validCreateRequest();
 
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().exists("Location"))
-                .andExpect(jsonPath("$.email").value("john.doe@test.com"));
+                .andExpect(status().isAccepted());
 
-        User saved = userRepository.findAll().get(0);
-
-        assertThat(saved.getGroup()).isNotNull();
-        assertThat(saved.getDepartments()).hasSize(2);
+        assertThat(userRepository.findByEmailAndIsDeletedFalse("john.doe@test.com")).isEmpty();
+        assertThat(tokenRepository.findByEmail("john.doe@test.com")).isPresent();
     }
 
     @Test
     void shouldReturn400_whenInvalidInput() throws Exception {
-
         CreateUserRequestDTO request = CreateUserRequestDTO.builder()
                 .firstName("")
                 .email("invalid-email")
@@ -147,32 +172,91 @@ class UserIntegrationTest {
     }
 
     @Test
-    void shouldReturn409_whenDuplicateEmail() throws Exception {
-
-        CreateUserRequestDTO request = createValidUserRequest();
+    void shouldReturn409_whenEmailAlreadyExistsInUsers() throws Exception {
+        initiateAndVerify(validCreateRequest());
 
         mockMvc.perform(post("/api/v1/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validCreateRequest())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Email already exists"));
+    }
+
+    @Test
+    void shouldReturn400_whenOtpIsWrong() throws Exception {
+        CreateUserRequestDTO request = validCreateRequest();
 
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isConflict());
+                .andExpect(status().isAccepted());
+
+        VerifyEmailRequestDTO badOtp = VerifyEmailRequestDTO.builder()
+                .email(request.getEmail())
+                .otp("000000")
+                .build();
+
+        mockMvc.perform(post("/api/v1/users/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(badOtp)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid OTP"));
+
+        assertThat(userRepository.findByEmailAndIsDeletedFalse(request.getEmail())).isEmpty();
+    }
+
+    @Test
+    void shouldReturn400_whenOtpIsExpired() throws Exception {
+        CreateUserRequestDTO request = validCreateRequest();
+
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted());
+
+        EmailVerificationToken token = tokenRepository
+                .findByEmail(request.getEmail()).orElseThrow();
+        token.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        tokenRepository.save(token);
+
+        VerifyEmailRequestDTO verifyDto = VerifyEmailRequestDTO.builder()
+                .email(request.getEmail())
+                .otp(token.getOtp())
+                .build();
+
+        mockMvc.perform(post("/api/v1/users/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verifyDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("OTP has expired. Ask the administrator to resend."));
+    }
+
+    @Test
+    void shouldResendOtp_andReplaceOldToken() throws Exception {
+        CreateUserRequestDTO request = validCreateRequest();
+
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted());
+
+        String firstOtp = tokenRepository.findByEmail(request.getEmail())
+                .orElseThrow().getOtp();
+
+        mockMvc.perform(post("/api/v1/users/resend-otp")
+                        .param("email", request.getEmail()))
+                .andExpect(status().isNoContent());
+
+        String secondOtp = tokenRepository.findByEmail(request.getEmail())
+                .orElseThrow().getOtp();
+
+        assertThat(secondOtp).isNotEqualTo(firstOtp);
     }
 
     @Test
     void shouldGetUserById() throws Exception {
-
-        User user = userRepository.save(
-                User.builder()
-                        .firstName("Jane")
-                        .lastName("Doe")
-                        .email("jane@test.com")
-                        .password("pass")
-                        .role(Role.STAFF)
-                        .build()
-        );
+        User user = savedUser("jane@test.com");
 
         mockMvc.perform(get("/api/v1/users/{id}", user.getId()))
                 .andExpect(status().isOk())
@@ -181,23 +265,13 @@ class UserIntegrationTest {
 
     @Test
     void shouldReturn404_whenUserNotFound() throws Exception {
-
         mockMvc.perform(get("/api/v1/users/{id}", UUID.randomUUID()))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void shouldUpdateUser_andChangeDepartments() throws Exception {
-
-        User user = userRepository.save(
-                User.builder()
-                        .firstName("Old")
-                        .lastName("Name")
-                        .email("old@test.com")
-                        .password("pass")
-                        .role(Role.STAFF)
-                        .build()
-        );
+        User user = savedUser("old@test.com");
 
         UpdateUserRequestDTO request = UpdateUserRequestDTO.builder()
                 .firstName("Updated")
@@ -210,69 +284,49 @@ class UserIntegrationTest {
                 .andExpect(status().isOk());
 
         User updated = userRepository.findById(user.getId()).orElseThrow();
-
+        assertThat(updated.getFirstName()).isEqualTo("Updated");
         assertThat(updated.getDepartments()).hasSize(1);
     }
 
     @Test
     void shouldSoftDeleteUser() throws Exception {
-
-        User user = userRepository.save(
-                User.builder()
-                        .firstName("Delete")
-                        .lastName("User")
-                        .email("delete@test.com")
-                        .password("pass")
-                        .role(Role.STAFF)
-                        .build()
-        );
+        User user = savedUser("delete@test.com");
 
         mockMvc.perform(delete("/api/v1/users/{id}", user.getId()))
                 .andExpect(status().isNoContent());
 
-        assertThat(userRepository.findById(user.getId())).isEmpty();
+        assertThat(userRepository.findByIdAndIsDeletedFalse(user.getId())).isEmpty();
+        assertThat(userRepository.findById(user.getId())).isPresent();
     }
 
     @Test
     void shouldRestoreUser() throws Exception {
-
         User user = userRepository.save(
                 User.builder()
-                        .firstName("Restore")
-                        .lastName("User")
-                        .email("restore@test.com")
-                        .password("pass")
-                        .role(Role.STAFF)
-                        .isDeleted(true)
-                        .build()
-        );
+                        .firstName("Restore").lastName("User")
+                        .email("restore@test.com").password("pass")
+                        .role(Role.STAFF).isDeleted(true)
+                        .build());
 
         mockMvc.perform(post("/api/v1/users/restore")
                         .param("email", user.getEmail()))
                 .andExpect(status().isOk());
 
         User restored = userRepository.findById(user.getId()).orElseThrow();
-
         assertThat(restored.getIsDeleted()).isFalse();
+        assertThat(restored.getDeletedAt()).isNull();
     }
 
     @Test
     void shouldGetAllUsers_withPagination() throws Exception {
-
         for (int i = 0; i < 5; i++) {
-            userRepository.save(
-                    User.builder()
-                            .firstName("User" + i)
-                            .lastName("Test")
-                            .email("user" + i + "@test.com")
-                            .password("pass")
-                            .role(Role.STAFF)
-                            .build()
-            );
+            savedUser("user" + i + "@test.com");
         }
 
-        mockMvc.perform(get("/api/v1/users?page=0&size=3"))
+        mockMvc.perform(get("/api/v1/users").param("page", "0").param("size", "3"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(3));
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.totalElements").value(5))
+                .andExpect(jsonPath("$.totalPages").value(2));
     }
 }

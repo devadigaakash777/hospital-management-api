@@ -1,10 +1,44 @@
 spring:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-
-  flyway:
-    enabled: false
-
   datasource:
     driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none          # let Flyway own the schema entirely
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true             # run your real migrations against Testcontainers
+    locations: classpath:db/migration
+
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+  cache:
+    type: none
+
+  task:
+    execution:
+      pool:
+        core-size: 1
+
+app:
+  otp:
+    expiry-minutes: 10
+
+jwt:
+  secret: test-secret-key-that-is-long-enough-for-hs256-algorithm
+  access-token-expiration: 900000
+  refresh-token-expiration: 604800000

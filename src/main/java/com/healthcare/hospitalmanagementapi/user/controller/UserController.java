@@ -2,6 +2,7 @@ package com.healthcare.hospitalmanagementapi.user.controller;
 
 import com.healthcare.hospitalmanagementapi.auth.security.CustomUserDetails;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
+import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.user.*;
 import com.healthcare.hospitalmanagementapi.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,19 +28,43 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "Create a new user")
-    @ApiResponse(responseCode = "201", description = "User created successfully")
+    @Operation(summary = "Initiate user creation — sends OTP to email")
+    @ApiResponse(responseCode = "202", description = "OTP sent to email")
     @ApiResponse(responseCode = "400", description = "Invalid input")
-    @ApiResponse(responseCode = "409", description = "Only ADMIN can create another ADMIN user")
+    @ApiResponse(responseCode = "409", description = "Email already exists")
     @ApiResponse(responseCode = "403", description = "You do not have permission")
     @PreAuthorize("hasAuthority('CAN_MANAGE_STAFF')")
     @PostMapping
-    public ResponseEntity<UserResponseDTO> createUser(
+    public ResponseEntity<Void> createUser(
             @RequestBody @Valid CreateUserRequestDTO request
     ) {
-        UserResponseDTO response = userService.createUser(request);
+        userService.initiateUserCreation(request);
+        return ResponseEntity.accepted().build();   // 202 Accepted
+    }
+
+    @Operation(summary = "Verify email OTP — completes user creation")
+    @ApiResponse(responseCode = "201", description = "User created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid or expired OTP")
+    @PostMapping("/verify-email")
+    public ResponseEntity<UserResponseDTO> verifyEmail(
+            @RequestBody @Valid VerifyEmailRequestDTO request
+    ) {
+        UserResponseDTO response = userService.verifyEmail(request);
         URI location = URI.create("/api/v1/users/" + response.getId());
-        return ResponseEntity.created(location).body(response);
+        return ResponseEntity.created(location).body(response);   // 201 Created
+    }
+
+    @Operation(summary = "Resend OTP for a pending user")
+    @ApiResponse(responseCode = "204", description = "OTP resent successfully")
+    @ApiResponse(responseCode = "404", description = "No pending registration for this email")
+    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_STAFF')")
+    @PostMapping("/resend-otp")
+    public ResponseEntity<Void> resendOtp(
+            @RequestParam String email
+    ) {
+        userService.resendOtp(email);
+        return ResponseEntity.noContent().build();   // 204
     }
 
     @Operation(summary = "Get user by ID")

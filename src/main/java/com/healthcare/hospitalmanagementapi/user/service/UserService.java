@@ -1,13 +1,18 @@
 package com.healthcare.hospitalmanagementapi.user.service;
 
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
+import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.user.*;
 
 import java.util.UUID;
 
 public interface UserService {
 
-    UserResponseDTO createUser(CreateUserRequestDTO dto);
+    void initiateUserCreation(CreateUserRequestDTO dto);
+
+    UserResponseDTO verifyEmail(VerifyEmailRequestDTO dto);
+
+    void resendOtp(String email);
 
     UserResponseDTO getUserById(UUID id);
 

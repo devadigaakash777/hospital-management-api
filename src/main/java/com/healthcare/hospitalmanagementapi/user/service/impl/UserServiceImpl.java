@@ -1,5 +1,6 @@
 package com.healthcare.hospitalmanagementapi.user.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.healthcare.hospitalmanagementapi.auth.security.CustomUserDetails;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.BadRequestException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
@@ -8,10 +9,13 @@ import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
 import com.healthcare.hospitalmanagementapi.department.entity.Department;
 import com.healthcare.hospitalmanagementapi.department.repository.DepartmentRepository;
 import com.healthcare.hospitalmanagementapi.enums.Role;
+import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailRequestDTO;
 import com.healthcare.hospitalmanagementapi.user.dto.user.*;
+import com.healthcare.hospitalmanagementapi.user.entity.EmailVerificationToken;
 import com.healthcare.hospitalmanagementapi.user.entity.User;
 import com.healthcare.hospitalmanagementapi.user.entity.UserGroup;
 import com.healthcare.hospitalmanagementapi.user.mapper.UserMapper;
+import com.healthcare.hospitalmanagementapi.user.repository.EmailVerificationTokenRepository;
 import com.healthcare.hospitalmanagementapi.user.repository.UserGroupRepository;
 import com.healthcare.hospitalmanagementapi.user.repository.UserRepository;
 import com.healthcare.hospitalmanagementapi.user.service.UserService;
@@ -24,7 +28,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -41,29 +48,105 @@ public class UserServiceImpl implements UserService {
     private final UserGroupRepository userGroupRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationTokenRepository tokenRepository;
+    private final EmailService emailService;
+    private final ObjectMapper objectMapper;
+
+    @Value("${app.otp.expiry-minutes:10}")
+    private int otpExpiryMinutes;
     private static final String USER_NOT_FOUND_MESSAGE = "User not found";
 
     @Override
-    @CachePut(key = "#result.id")
-    public UserResponseDTO createUser(CreateUserRequestDTO dto) {
+    @Transactional
+    public void initiateUserCreation(CreateUserRequestDTO dto) {
         validateAdminAssignment(dto.getRole());
-
 
         if (userRepository.existsByEmailAndIsDeletedFalse(dto.getEmail())) {
             throw new ConflictException("Email already exists");
         }
 
-        User user = userMapper.toEntity(dto);
-        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        tokenRepository.findByEmail(dto.getEmail())
+                .ifPresent(tokenRepository::delete);
 
-        applyGroupOrUserLogic(user, dto.getDepartmentIds(), dto.getGroupId());
+        String otp = generateOtp();
+
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(dto);
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("Invalid request data");
+        }
+
+        EmailVerificationToken token = EmailVerificationToken.builder()
+                .email(dto.getEmail())
+                .otp(otp)
+                .payload(payload)
+                .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
+                .build();
+
+        tokenRepository.save(token);
+        emailService.sendOtpEmail(dto.getEmail(), otp);   // @Async — non-blocking
+
+        log.info("OTP initiated for pending user: {}", dto.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public UserResponseDTO verifyEmail(VerifyEmailRequestDTO dto) {
+
+        EmailVerificationToken token = tokenRepository
+                .findByEmailAndOtp(dto.getEmail(), dto.getOtp())
+                .orElseThrow(() -> new BadRequestException("Invalid OTP"));
+
+        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            tokenRepository.delete(token);
+            throw new BadRequestException("OTP has expired. Ask the administrator to resend.");
+        }
+
+        // Deserialize the original creation request
+        CreateUserRequestDTO original;
+        try {
+            original = objectMapper.readValue(token.getPayload(), CreateUserRequestDTO.class);
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("Stored request is corrupted. Ask admin to recreate.");
+        }
+
+        // NOW create the real user — only at this point
+        User user = userMapper.toEntity(original);
+        user.setPassword(passwordEncoder.encode(original.getPassword()));
+        applyGroupOrUserLogic(user, original.getDepartmentIds(), original.getGroupId());
 
         User saved = userRepository.save(user);
 
-        log.info("User created with id: {}", saved.getId());
+        tokenRepository.delete(token);   // single-use — always delete after success
 
+        log.info("User created after email verification: {}", saved.getId());
         return userMapper.toResponseDTO(saved);
     }
+
+    @Override
+    @Transactional
+    public void resendOtp(String email) {
+
+        EmailVerificationToken existing = tokenRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No pending registration found for this email"));
+
+        // Reuse the same payload, just issue a new OTP and reset expiry
+        String newOtp = generateOtp();
+        existing.setOtp(newOtp);
+        existing.setExpiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes));
+        tokenRepository.save(existing);
+
+        emailService.sendOtpEmail(email, newOtp);
+
+        log.info("OTP resent for email: {}", email);
+    }
+
+    private String generateOtp() {
+        return String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
+    }
+
 
     @Override
     @Transactional(readOnly = true)
