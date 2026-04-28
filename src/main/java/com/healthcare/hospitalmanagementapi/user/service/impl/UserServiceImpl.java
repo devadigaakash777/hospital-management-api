@@ -187,43 +187,49 @@ public class UserServiceImpl implements UserService {
     }
 
     private void applyGroupOrUserLogic(User user, Set<UUID> departmentIds, UUID groupId) {
-
         if (groupId != null) {
-
-            UserGroup group = userGroupRepository.findByIdAndIsDeletedFalse(groupId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
-
-            user.setGroup(group);
-
-            user.setDepartments(new HashSet<>(group.getDepartments()));
-
-            user.setCanManageDoctorSlots(group.getCanManageDoctorSlots());
-            user.setCanManageStaff(group.getCanManageStaff());
-            user.setCanManageGroups(group.getCanManageGroups());
-            user.setCanExportReports(group.getCanExportReports());
-            user.setCanManageHealthPackages(group.getCanManageHealthPackages());
-
+            applyGroupLogic(user, groupId);
         } else {
-
-            user.setGroup(null);
-
-            if (departmentIds != null) {
-
-                if (departmentIds.isEmpty()) {
-                    user.getDepartments().clear();
-                } else {
-                    Set<Department> departments = new HashSet<>(
-                            departmentRepository.findAllById(departmentIds)
-                    );
-
-                    if (departments.size() != departmentIds.size()) {
-                        throw new ResourceNotFoundException("One or more departments not found");
-                    }
-
-                    user.setDepartments(departments);
-                }
-            }
+            applyDepartmentLogic(user, departmentIds);
         }
+    }
+
+    private void applyGroupLogic(User user, UUID groupId) {
+        UserGroup group = userGroupRepository.findByIdAndIsDeletedFalse(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+
+        user.setGroup(group);
+        user.setDepartments(new HashSet<>(group.getDepartments()));
+        user.setCanManageDoctorSlots(group.getCanManageDoctorSlots());
+        user.setCanManageStaff(group.getCanManageStaff());
+        user.setCanManageGroups(group.getCanManageGroups());
+        user.setCanExportReports(group.getCanExportReports());
+        user.setCanManageHealthPackages(group.getCanManageHealthPackages());
+    }
+
+    private void applyDepartmentLogic(User user, Set<UUID> departmentIds) {
+        user.setGroup(null);
+
+        if (departmentIds == null) return;
+
+        if (departmentIds.isEmpty()) {
+            if (user.getDepartments() == null) {
+                user.setDepartments(new HashSet<>());
+            } else {
+                user.getDepartments().clear();
+            }
+            return;
+        }
+
+        Set<Department> departments = new HashSet<>(
+                departmentRepository.findAllById(departmentIds)
+        );
+
+        if (departments.size() != departmentIds.size()) {
+            throw new ResourceNotFoundException("One or more departments not found");
+        }
+
+        user.setDepartments(departments);
     }
 
     private CustomUserDetails getCurrentUser() {
