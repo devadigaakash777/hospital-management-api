@@ -24,8 +24,6 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    // ─── Device Token ────────────────────────────────────────────────────────
-
     @Operation(summary = "Register FCM device token for the current user")
     @PostMapping("/device-token")
     public ResponseEntity<Void> registerDeviceToken(
@@ -42,8 +40,6 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
-    // ─── Admin — manual send ─────────────────────────────────────────────────
-
     @Operation(summary = "Send push notification to one or multiple users (admin only)")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/send")
@@ -58,8 +54,6 @@ public class NotificationController {
         );
         return ResponseEntity.noContent().build();
     }
-
-    // ─── In-app Notification History ─────────────────────────────────────────
 
     @Operation(summary = "Get my notifications (paginated)")
     @GetMapping
