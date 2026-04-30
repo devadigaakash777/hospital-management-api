@@ -61,4 +61,33 @@ public class EmailService {
             }
         }
     }
+
+    @Async
+    public void sendPasswordResetOtpEmail(String toEmail, String otp) {
+        try {
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setTo(toEmail);
+            msg.setSubject("Your password reset code");
+            msg.setText("""
+                    Hello,
+ 
+                    We received a request to reset the password for your account.
+                    Your password reset code is:
+ 
+                         %s
+ 
+                    This code expires in 10 minutes.
+                    If you did not request a password reset, please ignore this email.
+                    Do not share this code with anyone.
+ 
+                    — Hospital Management System
+                    """.formatted(otp));
+
+            mailSender.send(msg);
+            log.info("Password-reset OTP email sent to {}", toEmail);
+
+        } catch (Exception ex) {
+            log.error("Failed to send password-reset OTP email to {}: {}", toEmail, ex.getMessage());
+        }
+    }
 }

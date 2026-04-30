@@ -67,8 +67,7 @@ public class UserServiceImpl implements UserService {
             throw new ConflictException("Email already exists");
         }
 
-        tokenRepository.findByEmail(dto.getEmail())
-                .ifPresent(tokenRepository::delete);
+        tokenRepository.deleteByEmail(dto.getEmail());
 
         String otp = generateOtp();
 
@@ -163,12 +162,9 @@ public class UserServiceImpl implements UserService {
             throw new ConflictException("Email already in use");
         }
 
-        tokenRepository.findByUserId(userId)
-                .ifPresent(tokenRepository::delete);
+        tokenRepository.deleteByUserId(userId);
 
-        tokenRepository.findByEmail(newEmail)
-                .filter(t -> t.getUserId() == null)
-                .ifPresent(tokenRepository::delete);
+        tokenRepository.deleteByEmail(newEmail);
 
         String otp = generateOtp();
 
