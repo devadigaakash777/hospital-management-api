@@ -16,6 +16,8 @@ import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorRepository;
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorTimeSlotRepository;
 import com.healthcare.hospitalmanagementapi.doctor.service.DoctorBlockedDateService;
 import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
+import com.healthcare.hospitalmanagementapi.notification.service.NotificationService;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheConfig;
@@ -44,8 +46,19 @@ public class DoctorBlockedDateServiceImpl implements DoctorBlockedDateService {
     private final DoctorRepository doctorRepository;
     private final DoctorBlockedDateMapper doctorBlockedDateMapper;
     private final DoctorTimeSlotRepository timeSlotRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     private static final String BLOCKED_DATE_NOT_FOUND = "Blocked date not found";
+    private static final String EMAIL_MESSAGE = """
+                        Dear %s %s,
+    
+                        Your appointment on %s at %s has been cancelled because the doctor is unavailable on that date.
+    
+                        We apologise for the inconvenience. Please contact us to reschedule.
+    
+                        — Hospital Management System
+                        """;
 
     @Override
     @CachePut(key = "#result.id")
@@ -75,9 +88,7 @@ public class DoctorBlockedDateServiceImpl implements DoctorBlockedDateService {
                 .findAllByDoctorIdAndAppointmentDateAndAppointmentStatusInAndIsDeletedFalse(
                         doctorId,
                         dto.getBlockedDate(),
-                        List.of(
-                                AppointmentStatus.CONFIRMED
-                        )
+                        List.of(AppointmentStatus.CONFIRMED)
                 );
 
         appointments.forEach(appointment ->
@@ -85,6 +96,35 @@ public class DoctorBlockedDateServiceImpl implements DoctorBlockedDateService {
         );
 
         appointmentRepository.saveAll(appointments);
+
+        // Email each affected patient
+        appointments.forEach(appointment -> {
+            if (appointment.getPatient().getEmail() != null) {
+                emailService.sendBulkEmail(
+                        List.of(appointment.getPatient().getEmail()),
+                        "Appointment Cancelled",
+                        EMAIL_MESSAGE.formatted(
+                                appointment.getPatient().getFirstName(),
+                                appointment.getPatient().getLastName(),
+                                appointment.getAppointmentDate(),
+                                appointment.getAppointmentTime()
+                        )
+                );
+            }
+        });
+
+        // Push notification to doctor's user
+        if (!appointments.isEmpty()) {
+            notificationService.sendToUser(
+                    doctor.getUser().getId(),
+                    "Blocked Date — Appointments Cancelled",
+                    "%d appointment(s) on %s were cancelled due to the blocked date.".formatted(
+                            appointments.size(),
+                            dto.getBlockedDate()
+                    ),
+                    null
+            );
+        }
 
         log.info(
                 "Doctor blocked date created. doctorId={}, blockedDateId={}",

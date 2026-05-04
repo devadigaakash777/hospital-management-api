@@ -11,6 +11,7 @@ import com.healthcare.hospitalmanagementapi.healthpackage.dto.healthpackage.Heal
 import com.healthcare.hospitalmanagementapi.healthpackage.dto.healthpackage.UpdateHealthPackageRequestDTO;
 import com.healthcare.hospitalmanagementapi.healthpackage.dto.weeklyschedule.HealthPackageWeeklyScheduleResponseDTO;
 import com.healthcare.hospitalmanagementapi.healthpackage.entity.HealthPackage;
+import com.healthcare.hospitalmanagementapi.healthpackage.entity.HealthPackageAppointment;
 import com.healthcare.hospitalmanagementapi.healthpackage.mapper.HealthPackageMapper;
 import com.healthcare.hospitalmanagementapi.healthpackage.mapper.HealthPackageWeeklyScheduleMapper;
 import com.healthcare.hospitalmanagementapi.healthpackage.repository.HealthPackageAppointmentRepository;
@@ -18,6 +19,8 @@ import com.healthcare.hospitalmanagementapi.healthpackage.repository.HealthPacka
 import com.healthcare.hospitalmanagementapi.healthpackage.repository.HealthPackageTimeSlotRepository;
 import com.healthcare.hospitalmanagementapi.healthpackage.repository.HealthPackageWeeklyScheduleRepository;
 import com.healthcare.hospitalmanagementapi.healthpackage.service.HealthPackageService;
+import com.healthcare.hospitalmanagementapi.notification.service.NotificationService;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheConfig;
@@ -45,6 +48,15 @@ public class HealthPackageServiceImpl implements HealthPackageService {
 
     private static final String HEALTH_PACKAGE_NOT_FOUND = "Health package not found";
     private static final String CREATED_AT = "createdAt";
+    private static final String EMAIL_MESSAGE = """
+                            Dear %s %s,
+    
+                            Your health package appointment on %s at %s has been cancelled because the advance booking window for "%s" has been reduced.
+    
+                            We apologise for the inconvenience. Please contact us to reschedule.
+    
+                            — Hospital Management System
+                            """;
 
     private final HealthPackageRepository healthPackageRepository;
     private final HealthPackageWeeklyScheduleRepository weeklyScheduleRepository;
@@ -52,6 +64,8 @@ public class HealthPackageServiceImpl implements HealthPackageService {
     private final HealthPackageAppointmentRepository appointmentRepository;
     private final HealthPackageMapper healthPackageMapper;
     private final HealthPackageWeeklyScheduleMapper weeklyScheduleMapper;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Override
     @CachePut(key = "#result.id")
@@ -147,12 +161,19 @@ public class HealthPackageServiceImpl implements HealthPackageService {
 
         HealthPackage updated = healthPackageRepository.save(healthPackage);
 
-        // If advance booking window was reduced, cancel future appointments now beyond the limit
         if (dto.getAdvanceBookingDays() != null
                 && dto.getAdvanceBookingDays() < previousAdvanceBookingDays) {
 
             LocalDate lastAllowedDate = LocalDate.now()
                     .plusDays(dto.getAdvanceBookingDays());
+
+            // Fetch before bulk cancel so we have patient details for emails
+            List<HealthPackageAppointment> appointmentsToCancel = appointmentRepository
+                    .findAllByHealthPackageIdAndAppointmentDateAfterAndAppointmentStatusAndIsDeletedFalse(
+                            updated.getId(),
+                            lastAllowedDate,
+                            AppointmentStatus.CONFIRMED
+                    );
 
             int cancelledCount = appointmentRepository.cancelAppointmentsBeyondAdvanceBookingLimit(
                     updated.getId(),
@@ -169,6 +190,23 @@ public class HealthPackageServiceImpl implements HealthPackageService {
                     cancelledCount,
                     updated.getId()
             );
+
+            // Email each affected patient
+            appointmentsToCancel.forEach(appointment -> {
+                if (appointment.getPatient().getEmail() != null) {
+                    emailService.sendBulkEmail(
+                            List.of(appointment.getPatient().getEmail()),
+                            "Health Package Appointment Cancelled",
+                            EMAIL_MESSAGE.formatted(
+                                    appointment.getPatient().getFirstName(),
+                                    appointment.getPatient().getLastName(),
+                                    appointment.getAppointmentDate(),
+                                    appointment.getAppointmentTime(),
+                                    updated.getPackageName()
+                            )
+                    );
+                }
+            });
         }
 
         log.info("Health package updated with id: {}", id);

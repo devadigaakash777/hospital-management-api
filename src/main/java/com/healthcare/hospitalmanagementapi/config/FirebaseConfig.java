@@ -19,7 +19,7 @@ public class FirebaseConfig {
     public void initialize() throws IOException {
         if (FirebaseApp.getApps().isEmpty()) {
             InputStream serviceAccount =
-                    new ClassPathResource("firebase/hospital-management-system-777-firebase-adminsdk-fbsvc-d4678c0005.json").getInputStream();
+                    new ClassPathResource("firebase/serviceAccountKey.json").getInputStream();
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))

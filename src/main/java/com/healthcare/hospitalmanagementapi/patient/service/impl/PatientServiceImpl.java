@@ -10,6 +10,7 @@ import com.healthcare.hospitalmanagementapi.patient.entity.Patient;
 import com.healthcare.hospitalmanagementapi.patient.mapper.PatientMapper;
 import com.healthcare.hospitalmanagementapi.patient.repository.PatientRepository;
 import com.healthcare.hospitalmanagementapi.patient.service.PatientService;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheConfig;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +36,7 @@ public class PatientServiceImpl implements PatientService {
     private final PatientRepository patientRepository;
     private final PatientMapper patientMapper;
     private static final String PATIENT_NOT_FOUND_MESSAGE = "Patient not found with id: ";
+    private final EmailService emailService;
 
     @Override
     @CachePut(key = "#result.id")
@@ -50,6 +53,32 @@ public class PatientServiceImpl implements PatientService {
                 savedPatient.getId(),
                 savedPatient.getUhId()
         );
+
+        if (savedPatient.getEmail() != null) {
+            emailService.sendBulkEmail(
+                    List.of(savedPatient.getEmail()),
+                    "Welcome to Hospital Management System",
+                    """
+                    Dear %s %s,
+    
+                    Welcome! Your patient profile has been created successfully.
+    
+                    Your Details:
+                      Name  : %s %s
+                      UH ID : %s
+    
+                    Please keep your UH ID safe — you will need it for all future appointments.
+    
+                    — Hospital Management System
+                    """.formatted(
+                            savedPatient.getFirstName(),
+                            savedPatient.getLastName(),
+                            savedPatient.getFirstName(),
+                            savedPatient.getLastName(),
+                            savedPatient.getUhId()
+                    )
+            );
+        }
 
         return patientMapper.toResponseDTO(savedPatient);
     }

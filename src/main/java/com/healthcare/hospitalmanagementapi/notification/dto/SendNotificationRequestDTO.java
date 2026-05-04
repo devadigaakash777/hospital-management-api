@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -34,7 +35,7 @@ public class SendNotificationRequestDTO {
 
     @Schema(
             example = "{\"appointmentId\":\"123\"}",
-            description = "Optional additional data payload in JSON format"
+            description = "Optional additional data payload as key-value pairs"
     )
-    private String data;
+    private Map<String, String> data;
 }

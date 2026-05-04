@@ -203,4 +203,19 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             @Param("cancelledStatus") AppointmentStatus cancelledStatus,
             @Param("excludedStatuses") Collection<AppointmentStatus> excludedStatuses
     );
+
+    @Query("""
+    SELECT a FROM Appointment a
+    WHERE a.doctorId = :doctorId
+      AND a.appointmentDate > :lastAllowedDate
+      AND a.appointmentStatus = :status
+      AND a.isDeleted = false
+    """)
+    List<Appointment> findAllByDoctorIdAndAppointmentDateAfterAndAppointmentStatusAndIsDeletedFalse(
+            @Param("doctorId") UUID doctorId,
+            @Param("lastAllowedDate") LocalDate lastAllowedDate,
+            @Param("status") AppointmentStatus status
+    );
+
+    
 }

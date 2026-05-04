@@ -17,9 +17,11 @@ import com.healthcare.hospitalmanagementapi.doctor.entity.DoctorTimeSlot;
 import com.healthcare.hospitalmanagementapi.doctor.repository.*;
 import com.healthcare.hospitalmanagementapi.doctor.service.impl.DoctorAvailabilityValidator;
 import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
+import com.healthcare.hospitalmanagementapi.notification.service.NotificationService;
 import com.healthcare.hospitalmanagementapi.patient.entity.Patient;
 import com.healthcare.hospitalmanagementapi.patient.repository.PatientRepository;
 import com.healthcare.hospitalmanagementapi.user.entity.User;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheConfig;
@@ -35,6 +37,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -46,8 +50,6 @@ import java.util.UUID;
 @Transactional
 @CacheConfig(cacheNames = "appointments")
 public class AppointmentServiceImpl implements AppointmentService {
-
-
 
     private static final String APPOINTMENT_NOT_FOUND_MESSAGE = "Appointment not found";
     private static final String PATIENT_NOT_FOUND_MESSAGE = "Patient not found";
@@ -78,6 +80,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final DoctorTimeSlotRepository doctorTimeSlotRepository;
     private final AppointmentMapper appointmentMapper;
     private final AppointmentQueryService appointmentQueryService;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
 
     @Override
@@ -85,7 +89,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     public AppointmentResponseDTO createAppointment(CreateAppointmentRequestDTO request) {
 
         Patient patient = getPatient(request.getPatientId());
-        Doctor doctor = getDoctor(request.getDoctorId());
+        Doctor doctor   = getDoctor(request.getDoctorId());
         DoctorTimeSlot doctorTimeSlot = getDoctorTimeSlot(request.getDoctorTimeSlotId());
 
         validateDoctorTimeSlotBelongsToDoctor(doctor, doctorTimeSlot);
@@ -141,6 +145,55 @@ public class AppointmentServiceImpl implements AppointmentService {
                 doctorTimeSlot.getId()
         );
 
+        // ── Email patient ──────────────────────────────────────────────────
+        if (patient.getEmail() != null) {
+            emailService.sendBulkEmail(
+                    List.of(patient.getEmail()),
+                    "Appointment Confirmed",
+                    """
+                    Dear %s %s,
+
+                    Your appointment has been confirmed.
+
+                    Details:
+                      Date        : %s
+                      Time        : %s
+                      Department  : %s
+                      Token No.   : %d
+
+                    Please arrive 10 minutes early.
+
+                    — Hospital Management System
+                    """.formatted(
+                            patient.getFirstName(),
+                            patient.getLastName(),
+                            savedAppointment.getAppointmentDate(),
+                            savedAppointment.getAppointmentTime(),
+                            savedAppointment.getDepartmentNameSnapshot(),
+                            savedAppointment.getTokenNumber()
+                    )
+            );
+        }
+
+        // ── Push to doctor's user + createdByUser ──────────────────────────
+        List<UUID> pushRecipients = buildPushRecipients(
+                savedAppointment.getCreatedByUser().getId(),
+                doctor.getUser().getId()
+        );
+
+        notificationService.sendToUsers(
+                pushRecipients,
+                "New Appointment Booked",
+                "Appointment booked for %s %s on %s at %s (Token: %d).".formatted(
+                        patient.getFirstName(),
+                        patient.getLastName(),
+                        savedAppointment.getAppointmentDate(),
+                        savedAppointment.getAppointmentTime(),
+                        savedAppointment.getTokenNumber()
+                ),
+                null
+        );
+
         return appointmentMapper.toResponseDTO(savedAppointment);
     }
 
@@ -150,7 +203,6 @@ public class AppointmentServiceImpl implements AppointmentService {
     public AppointmentResponseDTO getAppointmentById(UUID appointmentId) {
         return appointmentMapper.toResponseDTO(getActiveAppointment(appointmentId));
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -230,7 +282,9 @@ public class AppointmentServiceImpl implements AppointmentService {
     ) {
         Appointment appointment = getActiveAppointment(appointmentId);
 
-        validateStatusTransition(appointment.getAppointmentStatus(), request.getAppointmentStatus());
+        AppointmentStatus previousStatus = appointment.getAppointmentStatus();
+
+        validateStatusTransition(previousStatus, request.getAppointmentStatus());
 
         Boolean newIsVip = request.getIsVip() != null
                 ? request.getIsVip()
@@ -253,6 +307,93 @@ public class AppointmentServiceImpl implements AppointmentService {
         Appointment updatedAppointment = appointmentRepository.save(appointment);
 
         log.info("Updated appointment. appointmentId={}", updatedAppointment.getId());
+
+        AppointmentStatus newStatus = updatedAppointment.getAppointmentStatus();
+
+        if (newStatus != null && !newStatus.equals(previousStatus)) {
+
+            Doctor doctor = getDoctor(updatedAppointment.getDoctorId());
+            Patient patient = updatedAppointment.getPatient();
+
+            List<UUID> pushRecipients = buildPushRecipients(
+                    updatedAppointment.getCreatedByUser().getId(),
+                    doctor.getUser().getId()
+            );
+
+            if (newStatus == AppointmentStatus.CANCELLED) {
+
+                if (patient.getEmail() != null) {
+                    emailService.sendBulkEmail(
+                            List.of(patient.getEmail()),
+                            "Appointment Cancelled",
+                            """
+                            Dear %s %s,
+
+                            Your appointment scheduled on %s at %s has been cancelled.
+
+                            If you have any queries, please contact us.
+
+                            — Hospital Management System
+                            """.formatted(
+                                    patient.getFirstName(),
+                                    patient.getLastName(),
+                                    updatedAppointment.getAppointmentDate(),
+                                    updatedAppointment.getAppointmentTime()
+                            )
+                    );
+                }
+
+                notificationService.sendToUsers(
+                        pushRecipients,
+                        "Appointment Cancelled",
+                        "Appointment for %s %s on %s at %s (Token: %d) has been cancelled.".formatted(
+                                patient.getFirstName(),
+                                patient.getLastName(),
+                                updatedAppointment.getAppointmentDate(),
+                                updatedAppointment.getAppointmentTime(),
+                                updatedAppointment.getTokenNumber()
+                        ),
+                        null
+                );
+
+            } else if (newStatus == AppointmentStatus.COMPLETED) {
+
+                // Email patient
+                if (patient.getEmail() != null) {
+                    emailService.sendBulkEmail(
+                            List.of(patient.getEmail()),
+                            "Appointment Completed",
+                            """
+                            Dear %s %s,
+
+                            Your appointment on %s at %s has been marked as completed.
+
+                            Thank you for visiting us. We wish you good health.
+
+                            — Hospital Management System
+                            """.formatted(
+                                    patient.getFirstName(),
+                                    patient.getLastName(),
+                                    updatedAppointment.getAppointmentDate(),
+                                    updatedAppointment.getAppointmentTime()
+                            )
+                    );
+                }
+
+                notificationService.sendToUsers(
+                        pushRecipients,
+                        "Appointment Completed",
+                        "Appointment for %s %s on %s at %s (Token: %d) has been completed.".formatted(
+                                patient.getFirstName(),
+                                patient.getLastName(),
+                                updatedAppointment.getAppointmentDate(),
+                                updatedAppointment.getAppointmentTime(),
+                                updatedAppointment.getTokenNumber()
+                        ),
+                        null
+                );
+            }
+        }
 
         return appointmentMapper.toResponseDTO(updatedAppointment);
     }
@@ -288,6 +429,15 @@ public class AppointmentServiceImpl implements AppointmentService {
         log.info("Restored appointment. appointmentId={}", restoredAppointment.getId());
 
         return appointmentMapper.toResponseDTO(restoredAppointment);
+    }
+
+    private List<UUID> buildPushRecipients(UUID createdByUserId, UUID doctorUserId) {
+        List<UUID> recipients = new ArrayList<>();
+        recipients.add(createdByUserId);
+        if (doctorUserId != null && !doctorUserId.equals(createdByUserId)) {
+            recipients.add(doctorUserId);
+        }
+        return recipients;
     }
 
     private Patient getPatient(UUID patientId) {

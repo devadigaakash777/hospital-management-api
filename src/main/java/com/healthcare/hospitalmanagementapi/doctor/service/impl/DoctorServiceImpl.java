@@ -1,5 +1,6 @@
 package com.healthcare.hospitalmanagementapi.doctor.service.impl;
 
+import com.healthcare.hospitalmanagementapi.appointment.entity.Appointment;
 import com.healthcare.hospitalmanagementapi.appointment.repository.AppointmentRepository;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ConflictException;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;
@@ -19,8 +20,10 @@ import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorTimeSlotRepo
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorWeeklyScheduleRepository;
 import com.healthcare.hospitalmanagementapi.doctor.service.DoctorService;
 import com.healthcare.hospitalmanagementapi.enums.Role;
+import com.healthcare.hospitalmanagementapi.notification.service.NotificationService;
 import com.healthcare.hospitalmanagementapi.user.entity.User;
 import com.healthcare.hospitalmanagementapi.user.repository.UserRepository;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheConfig;
@@ -51,6 +54,15 @@ public class DoctorServiceImpl implements DoctorService {
     private static final String DOCTOR_NOT_FOUND_MESSAGE = "Doctor not found";
     private static final String DEPARTMENT_NOT_FOUND_MESSAGE = "Department not found";
     private static final String CREATED_AT = "createdAt";
+    private static final String EMAIL_MESSAGE = """
+                            Dear %s %s,
+    
+                            Your appointment on %s at %s has been cancelled because the doctor's advance booking window has been reduced.
+    
+                            We apologise for the inconvenience. Please contact us to reschedule.
+    
+                            — Hospital Management System
+                            """;
 
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
@@ -60,6 +72,8 @@ public class DoctorServiceImpl implements DoctorService {
     private final DoctorTimeSlotRepository timeSlotRepository;
     private final DoctorBlockedDateRepository doctorBlockedDateRepository;
     private final AppointmentRepository appointmentRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     private final DoctorWeeklyScheduleMapper weeklyScheduleMapper;
     private final DoctorBlockedDateMapper doctorBlockedDateMapper;
@@ -216,6 +230,14 @@ public class DoctorServiceImpl implements DoctorService {
             LocalDate lastAllowedDate = LocalDate.now()
                     .plusDays(dto.getAdvanceBookingDays());
 
+            // Fetch before bulk cancel so we have patient details for emails
+            List<Appointment> appointmentsToCancel = appointmentRepository
+                    .findAllByDoctorIdAndAppointmentDateAfterAndAppointmentStatusAndIsDeletedFalse(
+                            updated.getId(),
+                            lastAllowedDate,
+                            AppointmentStatus.CONFIRMED
+                    );
+
             int cancelledCount = appointmentRepository.cancelAppointmentsBeyondAdvanceBookingLimit(
                     updated.getId(),
                     lastAllowedDate,
@@ -231,6 +253,35 @@ public class DoctorServiceImpl implements DoctorService {
                     cancelledCount,
                     updated.getId()
             );
+
+            // Email each affected patient
+            appointmentsToCancel.forEach(appointment -> {
+                if (appointment.getPatient().getEmail() != null) {
+                    emailService.sendBulkEmail(
+                            List.of(appointment.getPatient().getEmail()),
+                            "Appointment Cancelled",
+                            EMAIL_MESSAGE.formatted(
+                                    appointment.getPatient().getFirstName(),
+                                    appointment.getPatient().getLastName(),
+                                    appointment.getAppointmentDate(),
+                                    appointment.getAppointmentTime()
+                            )
+                    );
+                }
+            });
+
+            // Push notification to doctor's user
+            if (cancelledCount > 0) {
+                notificationService.sendToUser(
+                        updated.getUser().getId(),
+                        "Advance Booking Reduced — Appointments Cancelled",
+                        "%d appointment(s) beyond the new %d-day advance booking limit were cancelled.".formatted(
+                                cancelledCount,
+                                dto.getAdvanceBookingDays()
+                        ),
+                        null
+                );
+            }
         }
 
         log.info("Doctor updated with id: {}", id);

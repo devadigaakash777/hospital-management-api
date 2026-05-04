@@ -10,6 +10,7 @@ import com.healthcare.hospitalmanagementapi.patient.entity.Patient;
 import com.healthcare.hospitalmanagementapi.patient.mapper.PatientMapper;
 import com.healthcare.hospitalmanagementapi.patient.repository.PatientRepository;
 import com.healthcare.hospitalmanagementapi.patient.service.impl.PatientServiceImpl;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,9 @@ class PatientServiceImplTest {
 
     @Mock
     private PatientMapper patientMapper;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private PatientServiceImpl patientService;

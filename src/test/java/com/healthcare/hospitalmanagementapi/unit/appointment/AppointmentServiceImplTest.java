@@ -20,9 +20,11 @@ import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorRepository;
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorTimeSlotRepository;
 import com.healthcare.hospitalmanagementapi.doctor.service.impl.DoctorAvailabilityValidator;
 import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
+import com.healthcare.hospitalmanagementapi.notification.service.NotificationService;
 import com.healthcare.hospitalmanagementapi.patient.entity.Patient;
 import com.healthcare.hospitalmanagementapi.patient.repository.PatientRepository;
 import com.healthcare.hospitalmanagementapi.user.entity.User;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,6 +77,12 @@ class AppointmentServiceImplTest {
     @Mock
     private AppointmentQueryService appointmentQueryService;
 
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private AppointmentServiceImpl appointmentService;
 
@@ -104,6 +112,7 @@ class AppointmentServiceImplTest {
         department.setDepartmentName("Cardiology");
 
         User doctorUser = new User();
+        doctorUser.setId(UUID.randomUUID());
         doctorUser.setFirstName("John");
         doctorUser.setLastName("Doe");
 
@@ -125,6 +134,9 @@ class AppointmentServiceImplTest {
                 .reservedSlots(2)
                 .build();
 
+        User createdByUser = new User();
+        createdByUser.setId(UUID.randomUUID());
+
         appointment = Appointment.builder()
                 .id(appointmentId)
                 .patient(patient)
@@ -133,6 +145,7 @@ class AppointmentServiceImplTest {
                 .appointmentDate(LocalDate.now().plusDays(1))
                 .appointmentStatus(AppointmentStatus.CONFIRMED)
                 .isVip(false)
+                .createdByUser(createdByUser)
                 .build();
 
         createRequest = CreateAppointmentRequestDTO.builder()

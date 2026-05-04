@@ -1,5 +1,7 @@
 package com.healthcare.hospitalmanagementapi.notification.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthcare.hospitalmanagementapi.common.exception.custom.ResourceNotFoundException;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
 import com.healthcare.hospitalmanagementapi.notification.dto.*;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -30,6 +33,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final UserDeviceTokenRepository deviceTokenRepository;
     private final NotificationRepository notificationRepository;
     private final FcmPushService fcmPushService;
+    private final ObjectMapper objectMapper;
 
 
     @Override
@@ -58,12 +62,12 @@ public class NotificationServiceImpl implements NotificationService {
 
 
     @Override
-    public void sendToUser(UUID userId, String title, String message, String data) {
+    public void sendToUser(UUID userId, String title, String message, Map<String, String> data) {
         sendToUsers(List.of(userId), title, message, data);
     }
 
     @Override
-    public void sendToUsers(List<UUID> userIds, String title, String message, String data) {
+    public void sendToUsers(List<UUID> userIds, String title, String message, Map<String, String> data) {
         List<User> users = userRepository.findAllById(userIds);
 
         List<Notification> notifications = users.stream()
@@ -85,6 +89,24 @@ public class NotificationServiceImpl implements NotificationService {
                 .toList();
 
         fcmPushService.sendToTokens(tokens, title, message, data);
+    }
+
+    @Override
+    public void markAsRead(UUID userId, UUID notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
+
+        if (!notification.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Notification not found");
+        }
+
+        if (Boolean.TRUE.equals(notification.getIsRead())) {
+            log.debug("Notification {} already read — no-op", notificationId);
+            return;
+        }
+
+        notificationRepository.markAsReadByIdAndUserId(notificationId, userId);
+        log.info("Marked notification {} as read for user {}", notificationId, userId);
     }
 
     @Override
@@ -110,11 +132,20 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private NotificationResponseDTO toDTO(Notification n) {
+        String dataJson = null;
+        if (n.getData() != null) {
+            try {
+                dataJson = objectMapper.writeValueAsString(n.getData());
+            } catch (JsonProcessingException e) {
+                log.warn("Failed to serialize notification data for id {}", n.getId());
+            }
+        }
+
         return NotificationResponseDTO.builder()
                 .id(n.getId())
                 .title(n.getTitle())
                 .message(n.getMessage())
-                .data(n.getData())
+                .data(dataJson)
                 .isRead(n.getIsRead())
                 .createdAt(n.getCreatedAt())
                 .build();

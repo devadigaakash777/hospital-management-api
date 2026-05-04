@@ -15,6 +15,8 @@ import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorBlockedTimeS
 import com.healthcare.hospitalmanagementapi.doctor.repository.DoctorRepository;
 import com.healthcare.hospitalmanagementapi.doctor.service.DoctorBlockedTimeSlotService;
 import com.healthcare.hospitalmanagementapi.enums.AppointmentStatus;
+import com.healthcare.hospitalmanagementapi.notification.service.NotificationService;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,8 +45,19 @@ public class DoctorBlockedTimeSlotServiceImpl implements DoctorBlockedTimeSlotSe
     private final DoctorBlockedTimeSlotRepository doctorBlockedTimeSlotRepository;
     private final DoctorRepository doctorRepository;
     private final DoctorBlockedTimeSlotMapper doctorBlockedTimeSlotMapper;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     private static final String BLOCKED_TIME_SLOT_NOT_FOUND = "Blocked time slot not found";
+    private static final String EMAIL_MESSAGE = """
+                        Dear %s %s,
+    
+                        Your appointment on %s at %s has been cancelled because the doctor's time slot (%s - %s) has been blocked.
+    
+                        We apologise for the inconvenience. Please contact us to reschedule.
+    
+                        — Hospital Management System
+                        """;
 
     @Override
     @CachePut(key = "#result.id")
@@ -94,6 +107,39 @@ public class DoctorBlockedTimeSlotServiceImpl implements DoctorBlockedTimeSlotSe
         );
 
         appointmentRepository.saveAll(appointments);
+
+        // Email each affected patient
+        appointments.forEach(appointment -> {
+            if (appointment.getPatient().getEmail() != null) {
+                emailService.sendBulkEmail(
+                        List.of(appointment.getPatient().getEmail()),
+                        "Appointment Cancelled",
+                        EMAIL_MESSAGE.formatted(
+                                appointment.getPatient().getFirstName(),
+                                appointment.getPatient().getLastName(),
+                                appointment.getAppointmentDate(),
+                                appointment.getAppointmentTime(),
+                                dto.getStartTime(),
+                                dto.getEndTime()
+                        )
+                );
+            }
+        });
+
+        // Push notification to doctor's user
+        if (!appointments.isEmpty()) {
+            notificationService.sendToUser(
+                    doctor.getUser().getId(),
+                    "Blocked Time Slot — Appointments Cancelled",
+                    "%d appointment(s) on %s between %s - %s were cancelled due to the blocked time slot.".formatted(
+                            appointments.size(),
+                            dto.getBlockedDate(),
+                            dto.getStartTime(),
+                            dto.getEndTime()
+                    ),
+                    null
+            );
+        }
 
         log.info(
                 "Doctor blocked time slot created. doctorId={}, blockedTimeSlotId={}",

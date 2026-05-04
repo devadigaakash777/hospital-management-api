@@ -20,6 +20,7 @@ import com.healthcare.hospitalmanagementapi.auth.security.CustomUserDetails;
 import com.healthcare.hospitalmanagementapi.patient.entity.Patient;
 import com.healthcare.hospitalmanagementapi.patient.repository.PatientRepository;
 import com.healthcare.hospitalmanagementapi.user.entity.User;
+import com.healthcare.hospitalmanagementapi.user.service.impl.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheConfig;
@@ -35,10 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +49,21 @@ public class HealthPackageAppointmentServiceImpl implements HealthPackageAppoint
     private static final String PATIENT_NOT_FOUND = "Patient not found";
     private static final String HEALTH_PACKAGE_NOT_FOUND = "Health package not found";
     private static final String TIME_SLOT_NOT_FOUND = "Health package time slot not found";
+    private static final String EMAIL_SUBJECT = "Health Package Appointment Confirmed";
+    private static final String EMAIL_MESSAGE = """
+        Dear %s %s,
+
+        Your health package appointment has been successfully booked.
+
+        Package: %s
+        Date: %s
+        Time: %s
+        Token Number: %d
+
+        Please arrive 10 minutes early.
+
+        — Hospital Management System
+        """;
 
     private static final Set<AppointmentStatus> IMMUTABLE_STATUSES = Set.of(
             AppointmentStatus.CANCELLED,
@@ -76,6 +89,7 @@ public class HealthPackageAppointmentServiceImpl implements HealthPackageAppoint
     private final HealthPackageAppointmentMapper appointmentMapper;
     private final HealthPackageAppointmentQueryService appointmentQueryService;
     private final HealthPackageAvailabilityValidator availabilityValidator;
+    private final EmailService emailService;
 
     @Override
     @CachePut(key = "#result.id")
@@ -121,6 +135,21 @@ public class HealthPackageAppointmentServiceImpl implements HealthPackageAppoint
         );
 
         HealthPackageAppointment saved = appointmentRepository.save(appointment);
+
+        if (patient.getEmail() != null) {
+            emailService.sendBulkEmail(
+                    List.of(patient.getEmail()),
+                    EMAIL_SUBJECT,
+                    EMAIL_MESSAGE.formatted(
+                            patient.getFirstName(),
+                            patient.getLastName(),
+                            healthPackage.getPackageName(),
+                            saved.getAppointmentDate(),
+                            saved.getAppointmentTime(),
+                            saved.getTokenNumber()
+                    )
+            );
+        }
 
         log.info(
                 "Created health package appointment. appointmentId={}, patientId={}, healthPackageId={}, slotId={}, createdByUserId={}",

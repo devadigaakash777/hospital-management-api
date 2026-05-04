@@ -176,4 +176,17 @@ public interface HealthPackageAppointmentRepository extends JpaRepository<Health
             @Param("cancelledStatus") AppointmentStatus cancelledStatus,
             @Param("excludedStatuses") Collection<AppointmentStatus> excludedStatuses
     );
+
+    @Query("""
+    SELECT a FROM HealthPackageAppointment a
+    WHERE a.healthPackage.id = :healthPackageId
+      AND a.appointmentDate > :lastAllowedDate
+      AND a.appointmentStatus = :status
+      AND a.isDeleted = false
+    """)
+    List<HealthPackageAppointment> findAllByHealthPackageIdAndAppointmentDateAfterAndAppointmentStatusAndIsDeletedFalse(
+            @Param("healthPackageId") UUID healthPackageId,
+            @Param("lastAllowedDate") LocalDate lastAllowedDate,
+            @Param("status") AppointmentStatus status
+    );
 }

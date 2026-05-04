@@ -28,6 +28,7 @@ public class UserDeviceToken {
     private String deviceType;
 
     @Column(name = "created_at", updatable = false)
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @UpdateTimestamp

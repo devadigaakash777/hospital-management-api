@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -17,7 +18,7 @@ public class FcmPushService {
 
     private final UserDeviceTokenRepository deviceTokenRepository;
 
-    public void sendToToken(String token, String title, String body, String data) {
+    public void sendToToken(String token, String title, String body, Map<String, String> data) {
         Message message = buildMessage(token, title, body, data);
         try {
             String response = FirebaseMessaging.getInstance().send(message);
@@ -32,7 +33,7 @@ public class FcmPushService {
     }
 
     @Transactional
-    public void sendToTokens(List<String> tokens, String title, String body, String data) {
+    public void sendToTokens(List<String> tokens, String title, String body, Map<String, String> data) {
         if (tokens.isEmpty()) {
             log.info("No FCM tokens to send to.");
             return;
@@ -43,14 +44,18 @@ public class FcmPushService {
         for (int i = 0; i < tokens.size(); i += 500) {
             List<String> chunk = tokens.subList(i, Math.min(i + 500, tokens.size()));
 
-            MulticastMessage message = MulticastMessage.builder()
+            MulticastMessage.Builder messageBuilder = MulticastMessage.builder()
                     .addAllTokens(chunk)
                     .setNotification(Notification.builder()
                             .setTitle(title)
                             .setBody(body)
-                            .build())
-                    .putData("payload", data != null ? data : "")
-                    .build();
+                            .build());
+
+            if (data != null) {
+                data.forEach(messageBuilder::putData);
+            }
+
+            MulticastMessage message = messageBuilder.build();
 
             try {
                 BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(message);
@@ -78,15 +83,19 @@ public class FcmPushService {
         }
     }
 
-    private Message buildMessage(String token, String title, String body, String data) {
-        return Message.builder()
+    private Message buildMessage(String token, String title, String body, Map<String, String> data) {
+        Message.Builder builder = Message.builder()
                 .setToken(token)
                 .setNotification(Notification.builder()
                         .setTitle(title)
                         .setBody(body)
-                        .build())
-                .putData("payload", data != null ? data : "")
-                .build();
+                        .build());
+
+        if (data != null) {
+            data.forEach(builder::putData);
+        }
+
+        return builder.build();
     }
 
     private boolean isInvalidToken(FirebaseMessagingException e) {

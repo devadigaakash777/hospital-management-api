@@ -5,6 +5,9 @@ import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
 import com.healthcare.hospitalmanagementapi.notification.dto.*;
 import com.healthcare.hospitalmanagementapi.notification.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +27,10 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @Operation(summary = "Register FCM device token for the current user")
+    @Operation(summary = "Register FCM device token", description = "Registers a device token for push notifications for the current user")
+    @ApiResponse(responseCode = "204", description = "Device token registered successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
+    @ApiResponse(responseCode = "404", description = "User not found", content = @Content)
     @PostMapping("/device-token")
     public ResponseEntity<Void> registerDeviceToken(
             @RequestBody @Valid RegisterDeviceTokenRequestDTO request
@@ -33,14 +39,20 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Remove an FCM device token (on logout)")
+    @Operation(summary = "Remove FCM device token", description = "Removes a device token for the current user during logout")
+    @ApiResponse(responseCode = "204", description = "Device token removed successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
     @DeleteMapping("/device-token")
     public ResponseEntity<Void> removeDeviceToken(@RequestParam String fcmToken) {
         notificationService.removeDeviceToken(getCurrentUserId(), fcmToken);
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Send push notification to one or multiple users (admin only)")
+    @Operation(summary = "Send notification", description = "Send push notification to one or multiple users (Admin only)")
+    @ApiResponse(responseCode = "204", description = "Notification sent successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
+    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "404", description = "User not found", content = @Content)
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/send")
     public ResponseEntity<Void> sendNotification(
@@ -55,7 +67,13 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Get my notifications (paginated)")
+    @Operation(summary = "Get my notifications", description = "Fetch paginated list of notifications for the current user")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Notifications fetched successfully",
+            content = @Content(schema = @Schema(implementation = NotificationResponseDTO.class))
+    )
+    @ApiResponse(responseCode = "400", description = "Invalid pagination parameters", content = @Content)
     @GetMapping
     public ResponseEntity<PageResponse<NotificationResponseDTO>> getMyNotifications(
             @RequestParam(defaultValue = "0") int page,
@@ -66,20 +84,33 @@ public class NotificationController {
         );
     }
 
-    @Operation(summary = "Get my unread notification count")
+    @Operation(summary = "Get unread notification count", description = "Fetch total unread notifications count for the current user")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Unread count fetched successfully",
+            content = @Content(schema = @Schema(implementation = Long.class))
+    )
     @GetMapping("/unread-count")
     public ResponseEntity<Long> getUnreadCount() {
         return ResponseEntity.ok(notificationService.getUnreadCount(getCurrentUserId()));
     }
 
-    @Operation(summary = "Mark all notifications as read")
+    @Operation(summary = "Mark notification as read", description = "Mark a specific notification as read")
+    @ApiResponse(responseCode = "204", description = "Notification marked as read")
+    @ApiResponse(responseCode = "404", description = "Notification not found", content = @Content)
+    @PostMapping("/{notificationId}/mark-read")
+    public ResponseEntity<Void> markAsRead(@PathVariable UUID notificationId) {
+        notificationService.markAsRead(getCurrentUserId(), notificationId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Mark all notifications as read", description = "Mark all notifications as read for the current user")
+    @ApiResponse(responseCode = "204", description = "All notifications marked as read")
     @PostMapping("/mark-all-read")
     public ResponseEntity<Void> markAllAsRead() {
         notificationService.markAllAsRead(getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
-
-    // ─── Helper ──────────────────────────────────────────────────────────────
 
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
