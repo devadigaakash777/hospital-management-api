@@ -45,6 +45,34 @@ public class EmailService {
     }
 
     @Async
+    public void sendWelcomeEmail(String toEmail, String temporaryPassword) {
+        try {
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setTo(toEmail);
+            msg.setSubject("Your account has been created");
+            msg.setText("""
+                    Hello,
+
+                    Your account has been successfully created on the Hospital Management System.
+                    Your temporary password is:
+
+                         %s
+
+                    Please log in and change your password immediately.
+                    Do not share it with anyone.
+
+                    — Hospital Management System
+                    """.formatted(temporaryPassword));
+
+            mailSender.send(msg);
+            log.info("Welcome email with temporary password sent to {}", toEmail);
+
+        } catch (Exception ex) {
+            log.error("Failed to send welcome email to {}: {}", toEmail, ex.getMessage());
+        }
+    }
+
+    @Async
     public void sendBulkEmail(List<String> emails, String subject, String message) {
         for (String email : emails) {
             try {

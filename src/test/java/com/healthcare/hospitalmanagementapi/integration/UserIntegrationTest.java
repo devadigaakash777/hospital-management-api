@@ -69,7 +69,6 @@ class UserIntegrationTest {
     @Autowired private EmailVerificationTokenRepository tokenRepository;
 
     private Department department1;
-    private Department department2;
     private UserGroup userGroup;
 
     @BeforeEach
@@ -77,7 +76,7 @@ class UserIntegrationTest {
         department1 = departmentRepository.save(
                 Department.builder().departmentName("Cardiology").build());
 
-        department2 = departmentRepository.save(
+        Department department2 = departmentRepository.save(
                 Department.builder().departmentName("Neurology").build());
 
         userGroup = userGroupRepository.save(
@@ -94,7 +93,6 @@ class UserIntegrationTest {
                 .firstName("John")
                 .lastName("Doe")
                 .email("john.doe@test.com")
-                .password("Password123")
                 .role(Role.STAFF)
                 .groupId(userGroup.getId())
                 .build();

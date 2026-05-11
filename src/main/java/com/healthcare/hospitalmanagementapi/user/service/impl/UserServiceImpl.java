@@ -32,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -58,6 +59,9 @@ public class UserServiceImpl implements UserService {
 
     private static final String USER_NOT_FOUND_MESSAGE = "User not found";
 
+    private static final String PASSWORD_CHARS =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%!";
+
     @Override
     @Transactional
     public void initiateUserCreation(CreateUserRequestDTO dto) {
@@ -70,10 +74,14 @@ public class UserServiceImpl implements UserService {
         tokenRepository.deleteByEmail(dto.getEmail());
 
         String otp = generateOtp();
+        // Generate a secure temporary password on the backend
+        String temporaryPassword = generateTemporaryPassword();
 
         String payload;
         try {
-            payload = objectMapper.writeValueAsString(dto);
+            // Store both the DTO and the plain-text temporary password together
+            UserCreationPayload creationPayload = new UserCreationPayload(dto, temporaryPassword);
+            payload = objectMapper.writeValueAsString(creationPayload);
         } catch (JsonProcessingException e) {
             throw new BadRequestException("Invalid request data");
         }
@@ -108,20 +116,26 @@ public class UserServiceImpl implements UserService {
             throw new BadRequestException("OTP has expired. Ask the administrator to resend.");
         }
 
-        CreateUserRequestDTO original;
+        UserCreationPayload creationPayload;
         try {
-            original = objectMapper.readValue(token.getPayload(), CreateUserRequestDTO.class);
+            creationPayload = objectMapper.readValue(token.getPayload(), UserCreationPayload.class);
         } catch (JsonProcessingException e) {
             throw new BadRequestException("Stored request is corrupted. Ask admin to recreate.");
         }
 
+        CreateUserRequestDTO original = creationPayload.getDto();
+        String temporaryPassword = creationPayload.getTemporaryPassword();
+
         User user = userMapper.toEntity(original);
-        user.setPassword(passwordEncoder.encode(original.getPassword()));
+        user.setPassword(passwordEncoder.encode(temporaryPassword));
         applyGroupOrUserLogic(user, original.getDepartmentIds(), original.getGroupId());
 
         User saved = userRepository.save(user);
 
         tokenRepository.delete(token);
+
+        // Send the temporary password to the user after successful account creation
+        emailService.sendWelcomeEmail(saved.getEmail(), temporaryPassword);
 
         log.info("User created after email verification: {}", saved.getId());
         return userMapper.toResponseDTO(saved);
@@ -135,8 +149,28 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No pending registration found for this email"));
 
+        // Regenerate both OTP and temporary password on resend to keep them fresh
         String newOtp = generateOtp();
+        String newTemporaryPassword = generateTemporaryPassword();
+
+        UserCreationPayload existingPayload;
+        try {
+            existingPayload = objectMapper.readValue(existing.getPayload(), UserCreationPayload.class);
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("Stored request is corrupted. Ask admin to recreate.");
+        }
+
+        existingPayload.setTemporaryPassword(newTemporaryPassword);
+
+        String updatedPayload;
+        try {
+            updatedPayload = objectMapper.writeValueAsString(existingPayload);
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("Failed to update stored request.");
+        }
+
         existing.setOtp(newOtp);
+        existing.setPayload(updatedPayload);
         existing.setExpiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes));
         tokenRepository.save(existing);
 
@@ -163,7 +197,6 @@ public class UserServiceImpl implements UserService {
         }
 
         tokenRepository.deleteByUserId(userId);
-
         tokenRepository.deleteByEmail(newEmail);
 
         String otp = generateOtp();
@@ -307,8 +340,25 @@ public class UserServiceImpl implements UserService {
         return new PageResponse<>(users.map(userMapper::toResponseDTO));
     }
 
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     private String generateOtp() {
-        return String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
+        return String.format("%06d", new SecureRandom().nextInt(1_000_000));
+    }
+
+    /**
+     * Generates a 12-character cryptographically random temporary password
+     * that includes uppercase, lowercase, digits, and special characters.
+     */
+    private String generateTemporaryPassword() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(12);
+        for (int i = 0; i < 12; i++) {
+            sb.append(PASSWORD_CHARS.charAt(random.nextInt(PASSWORD_CHARS.length())));
+        }
+        return sb.toString();
     }
 
     private void applyGroupOrUserLogic(User user, Set<UUID> departmentIds, UUID groupId) {

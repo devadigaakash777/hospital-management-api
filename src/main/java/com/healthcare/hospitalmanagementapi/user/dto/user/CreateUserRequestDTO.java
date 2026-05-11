@@ -31,11 +31,6 @@ public class CreateUserRequestDTO {
     @Schema(example = "john.doe@example.com", description = "Unique email address of the user")
     private String email;
 
-    @NotBlank
-    @Size(min = 8, max = 255)
-    @Schema(example = "SecurePassword123", description = "User account password")
-    private String password;
-
     @NotNull
     @Schema(example = "STAFF", description = "Role assigned to the user")
     private Role role;

@@ -25,7 +25,6 @@ public class TestDataBuilder {
                 .firstName("John")
                 .lastName("Doe")
                 .email("test@example.com")
-                .password("password123")
                 .role(Role.STAFF)
                 .build();
     }
