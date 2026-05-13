@@ -128,6 +128,7 @@ public class UserServiceImpl implements UserService {
 
         User user = userMapper.toEntity(original);
         user.setPassword(passwordEncoder.encode(temporaryPassword));
+        user.setMustChangePassword(true);
         applyGroupOrUserLogic(user, original.getDepartmentIds(), original.getGroupId());
 
         User saved = userRepository.save(user);
@@ -328,6 +329,7 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        user.setMustChangePassword(false);
         userRepository.save(user);
         log.info("Password changed for user id: {}", id);
     }

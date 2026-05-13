@@ -76,4 +76,7 @@ public class User extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "department_id")
     )
     private Set<Department> departments = new HashSet<>();
+
+    @Column(name = "must_change_password", nullable = false)
+    private Boolean mustChangePassword = true;
 }

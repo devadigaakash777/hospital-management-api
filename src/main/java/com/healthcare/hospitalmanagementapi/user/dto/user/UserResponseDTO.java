@@ -31,6 +31,8 @@ public class UserResponseDTO {
     @Schema(example = "STAFF", description = "Role assigned to the user")
     private Role role;
 
+    private Boolean mustChangePassword;
+
     private Boolean canManageDoctorSlots;
 
     private Boolean canManageStaff;
