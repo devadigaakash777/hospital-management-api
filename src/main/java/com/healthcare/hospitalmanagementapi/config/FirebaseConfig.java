@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -18,8 +20,15 @@ public class FirebaseConfig {
     @PostConstruct
     public void initialize() throws IOException {
         if (FirebaseApp.getApps().isEmpty()) {
-            InputStream serviceAccount =
-                    new ClassPathResource("firebase/serviceAccountKey.json").getInputStream();
+
+            InputStream serviceAccount;
+
+            File secretFile = new File("/etc/secrets/serviceAccountKey.json");
+            if (secretFile.exists()) {
+                serviceAccount = new FileInputStream(secretFile);
+            } else {
+                serviceAccount = new ClassPathResource("firebase/serviceAccountKey.json").getInputStream();
+            }
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
