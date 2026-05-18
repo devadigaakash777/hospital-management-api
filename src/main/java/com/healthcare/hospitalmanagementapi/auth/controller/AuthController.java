@@ -3,6 +3,8 @@ package com.healthcare.hospitalmanagementapi.auth.controller;
 import com.healthcare.hospitalmanagementapi.auth.dto.*;
 import com.healthcare.hospitalmanagementapi.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -21,8 +23,25 @@ public class AuthController {
 
     @Operation(summary = "Login user", description = "Authenticate user and return access & refresh tokens")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Login successful"),
-            @ApiResponse(responseCode = "400", description = "Invalid request")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Authentication successful. Returns a Bearer access token and a refresh token. " +
+                            "The access token should be included in the Authorization header of subsequent requests.",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AuthResponseDTO.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "The request body is invalid or missing required fields (e.g. email or password).",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication failed — the provided email or password is incorrect.",
+                    content = @Content
+            )
     })
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody @Valid LoginRequestDTO request) {
@@ -31,8 +50,25 @@ public class AuthController {
 
     @Operation(summary = "Refresh token", description = "Generate new access token using refresh token")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Token refreshed"),
-            @ApiResponse(responseCode = "400", description = "Invalid refresh token")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Token rotation successful. Returns a new Bearer access token along with a new refresh token. " +
+                            "The previous refresh token is immediately invalidated upon successful rotation.",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AuthResponseDTO.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "The request body is invalid or the refresh token field is missing.",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Token refresh failed — the provided refresh token is invalid, expired, or has already been revoked.",
+                    content = @Content
+            )
     })
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponseDTO> refresh(@RequestBody @Valid RefreshTokenRequestDTO request) {
@@ -41,7 +77,17 @@ public class AuthController {
 
     @Operation(summary = "Logout user", description = "Invalidate refresh token and logout user")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "Logout successful")
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Logout successful. The provided refresh token has been permanently revoked. " +
+                            "Any access tokens previously issued remain valid until their natural expiry.",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Logout failed — the provided refresh token is invalid or has already been revoked.",
+                    content = @Content
+            )
     })
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestBody @Valid RefreshTokenRequestDTO request) {

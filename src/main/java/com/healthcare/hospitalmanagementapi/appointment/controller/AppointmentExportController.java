@@ -28,7 +28,10 @@ import java.time.format.DateTimeFormatter;
         name = "Appointment Management",
         description = "Operations related to appointment management"
 )
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(
+        responseCode = "401",
+        description = "Authentication required — no valid credentials were provided. Ensure a valid Bearer token is included in the Authorization header."
+)
 public class AppointmentExportController {
 
     private static final DateTimeFormatter FILE_DATE_FMT =
@@ -58,16 +61,27 @@ public class AppointmentExportController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Excel file generated successfully",
+            description = "Excel report generated and returned successfully as a binary file attachment. " +
+                    "The response Content-Disposition header will contain the suggested filename in the format appointments_yyyyMMdd.xlsx.",
             content = @Content(mediaType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     )
     @ApiResponse(
             responseCode = "400",
             description = """
-                    Bad request:
-                    - startDate is after endDate
-                    - Result set exceeds the 10 000-row export limit
+                    The request could not be processed due to one of the following reasons:
+                    - startDate is later than endDate
+                    - The filtered result set exceeds the maximum export limit of 10,000 records — apply a narrower date range, a specific doctor, status, or created-by-user filter and retry
                     """,
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "Access denied — the authenticated user does not hold the CAN_EXPORT_REPORTS authority required for this operation.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "500",
+            description = "An unexpected server-side error occurred while generating the Excel report. Please retry the request; if the issue persists, contact the system administrator.",
             content = @Content
     )
     @PreAuthorize("hasAuthority('CAN_EXPORT_REPORTS')")

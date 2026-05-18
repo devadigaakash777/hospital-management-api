@@ -4,6 +4,7 @@ import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
 import com.healthcare.hospitalmanagementapi.user.dto.group.*;
 import com.healthcare.hospitalmanagementapi.user.service.UserGroupService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
@@ -19,16 +20,16 @@ import java.util.UUID;
 @RequestMapping("/api/v1/user-groups")
 @RequiredArgsConstructor
 @Tag(name = "User Group Management", description = "Operations related to user group management")
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(responseCode = "401", description = "Authentication required. The request lacks valid credentials or the session has expired.", content = @Content)
 public class UserGroupController {
 
     private final UserGroupService userGroupService;
 
     @Operation(summary = "Create a new user group")
-    @ApiResponse(responseCode = "201", description = "User group created successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid input")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
-    @ApiResponse(responseCode = "409", description = "Duplicate department IDs are not allowed")
+    @ApiResponse(responseCode = "201", description = "The user group has been successfully created. The Location header contains the URI of the newly created resource.")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "The request contains duplicate department identifiers. Each department may only be associated with a group once.", content = @Content)
     @PreAuthorize("hasAuthority('CAN_MANAGE_GROUPS')")
     @PostMapping
     public ResponseEntity<UserGroupResponseDTO> createUserGroup(
@@ -40,8 +41,8 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Get user group by ID")
-    @ApiResponse(responseCode = "200", description = "User group fetched successfully")
-    @ApiResponse(responseCode = "404", description = "User group not found")
+    @ApiResponse(responseCode = "200", description = "The user group was retrieved successfully.")
+    @ApiResponse(responseCode = "404", description = "The specified user group could not be found or has been removed.", content = @Content)
     @GetMapping("/{groupId}")
     public ResponseEntity<UserGroupResponseDTO> getUserGroupById(
             @PathVariable UUID groupId
@@ -50,7 +51,7 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Get all user groups with pagination")
-    @ApiResponse(responseCode = "200", description = "User groups fetched successfully")
+    @ApiResponse(responseCode = "200", description = "A paginated list of active user groups was retrieved successfully.")
     @GetMapping
     public ResponseEntity<PageResponse<UserGroupResponseDTO>> getAllUserGroups(
             @RequestParam(defaultValue = "0") int page,
@@ -60,10 +61,10 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Update user group (partial update)")
-    @ApiResponse(responseCode = "200", description = "User group updated successfully")
-    @ApiResponse(responseCode = "404", description = "User group not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
-    @ApiResponse(responseCode = "409", description = "Duplicate department IDs are not allowed")
+    @ApiResponse(responseCode = "200", description = "The user group has been successfully updated. The updated resource is returned in the response body.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified user group could not be found or has been removed.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "The request contains duplicate department identifiers. Each department may only be associated with a group once.", content = @Content)
     @PreAuthorize("hasAuthority('CAN_MANAGE_GROUPS')")
     @PatchMapping("/{groupId}")
     public ResponseEntity<UserGroupResponseDTO> updateUserGroup(
@@ -74,9 +75,9 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Delete user group (soft delete)")
-    @ApiResponse(responseCode = "204", description = "User group deleted successfully")
-    @ApiResponse(responseCode = "404", description = "User group not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "204", description = "The user group has been successfully soft-deleted. No content is returned.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified user group could not be found or has been removed.", content = @Content)
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_GROUPS')")
     @DeleteMapping("/{groupId}")
     public ResponseEntity<Void> deleteUserGroup(
@@ -87,9 +88,9 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Restore user group by ID")
-    @ApiResponse(responseCode = "200", description = "User group restored successfully")
-    @ApiResponse(responseCode = "404", description = "User group not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "200", description = "The user group has been successfully restored and is now active. The restored resource is returned in the response body.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified user group could not be found.", content = @Content)
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_GROUPS')")
     @PostMapping("/{groupId}/restore")
     public ResponseEntity<UserGroupResponseDTO> restoreUserGroup(

@@ -24,6 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/patients")
 @RequiredArgsConstructor
+@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in", content = @Content)
 @Tag(
         name = "Patient Management",
         description = "Operations related to patient management"
@@ -38,11 +39,23 @@ public class PatientController {
     )
     @ApiResponse(
             responseCode = "201",
-            description = "Patient created successfully",
-            content = @Content(schema = @Schema(implementation = PatientResponseDTO.class))
+            description = "Patient registered successfully. A unique UH ID has been assigned to the patient and, if an email address was provided, a welcome notification has been dispatched. " +
+                    "The Location header contains the URI of the newly created resource.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PatientResponseDTO.class)
+            )
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request")
-    @ApiResponse(responseCode = "409", description = "Patient already exists")
+    @ApiResponse(
+            responseCode = "400",
+            description = "The request body is invalid or one or more required fields failed validation.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "A patient record with conflicting identifying information already exists in the system.",
+            content = @Content
+    )
     @PostMapping
     public ResponseEntity<PatientResponseDTO> createPatient(
             @RequestBody @Valid CreatePatientRequestDTO requestDTO
@@ -62,10 +75,17 @@ public class PatientController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Patient retrieved successfully",
-            content = @Content(schema = @Schema(implementation = PatientResponseDTO.class))
+            description = "Patient record retrieved successfully.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PatientResponseDTO.class)
+            )
     )
-    @ApiResponse(responseCode = "404", description = "Patient not found")
+    @ApiResponse(
+            responseCode = "404",
+            description = "No active patient was found with the provided identifier. The patient may have been deleted or may never have existed.",
+            content = @Content
+    )
     @GetMapping("/{patientId}")
     public ResponseEntity<PatientResponseDTO> getPatientById(
             @Parameter(description = "Patient ID")
@@ -82,9 +102,17 @@ public class PatientController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Patients retrieved successfully"
+            description = "Paginated list of patients matching the search term retrieved successfully. Returns an empty page if no records match.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PageResponse.class)
+            )
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request")
+    @ApiResponse(
+            responseCode = "400",
+            description = "The pagination parameters are invalid.",
+            content = @Content
+    )
     @GetMapping("/search")
     public ResponseEntity<PageResponse<PatientResponseDTO>> searchPatients(
             @RequestParam(required = false) String search,
@@ -101,7 +129,11 @@ public class PatientController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Patients retrieved successfully"
+            description = "Paginated list of all active patient records retrieved successfully.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PageResponse.class)
+            )
     )
     @GetMapping
     public ResponseEntity<PageResponse<PatientResponseDTO>> getAllPatients(
@@ -118,11 +150,22 @@ public class PatientController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Patient updated successfully",
-            content = @Content(schema = @Schema(implementation = PatientResponseDTO.class))
+            description = "Patient record updated successfully. Returns the full updated patient record.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PatientResponseDTO.class)
+            )
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request")
-    @ApiResponse(responseCode = "404", description = "Patient not found")
+    @ApiResponse(
+            responseCode = "400",
+            description = "The request body is invalid or one or more fields failed validation.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "No active patient was found with the provided identifier.",
+            content = @Content
+    )
     @PatchMapping("/{patientId}")
     public ResponseEntity<PatientResponseDTO> updatePatient(
             @Parameter(description = "Patient ID")
@@ -138,8 +181,15 @@ public class PatientController {
             summary = "Delete patient",
             description = "Soft deletes a patient."
     )
-    @ApiResponse(responseCode = "204", description = "Patient deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Patient not found")
+    @ApiResponse(
+            responseCode = "204",
+            description = "Patient soft-deleted successfully. The record is retained in the system and can be restored if required."
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "No active patient was found with the provided identifier.",
+            content = @Content
+    )
     @DeleteMapping("/{patientId}")
     public ResponseEntity<Void> deletePatient(
             @Parameter(description = "Patient ID")
@@ -156,11 +206,22 @@ public class PatientController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Patient restored successfully",
-            content = @Content(schema = @Schema(implementation = PatientResponseDTO.class))
+            description = "Patient record restored successfully. Returns the full patient record in its reinstated active state.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PatientResponseDTO.class)
+            )
     )
-    @ApiResponse(responseCode = "404", description = "Patient not found")
-    @ApiResponse(responseCode = "409", description = "Patient is already active")
+    @ApiResponse(
+            responseCode = "404",
+            description = "No patient was found with the provided identifier.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "The patient record is already in an active state and cannot be restored again.",
+            content = @Content
+    )
     @PostMapping("/{patientId}/restore")
     public ResponseEntity<PatientResponseDTO> restorePatient(
             @Parameter(description = "Patient ID")

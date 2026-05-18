@@ -33,7 +33,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/doctors")
 @RequiredArgsConstructor
 @Tag(name = "Doctor Management", description = "Operations related to doctor management")
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(responseCode = "401", description = "Authentication required. The request lacks valid credentials or the session has expired.", content = @Content)
 public class DoctorController {
 
     private final DoctorService doctorService;
@@ -41,21 +41,25 @@ public class DoctorController {
     @Operation(summary = "Create a doctor", description = "Creates a new doctor and optionally creates the doctor's weekly schedules")
     @ApiResponse(
             responseCode = "201",
-            description = "Doctor created successfully",
+            description = "The doctor profile has been successfully created. The Location header contains the URI of the newly created resource.",
             content = @Content(schema = @Schema(implementation = DoctorResponseDTO.class))
     )
     @ApiResponse(
             responseCode = "400",
-            description = "Invalid request",
+            description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.",
             content = @Content
     )
     @ApiResponse(
             responseCode = "404",
-            description = "User or department not found",
+            description = "The referenced user or department could not be found or has been removed.",
             content = @Content
     )
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
-    @ApiResponse(responseCode = "409", description = "Doctor already exists or related conflict occurred")
+    @ApiResponse(responseCode = "409", description = "A doctor profile already exists for the specified user, or another conflicting record was detected.", content = @Content)
     @PreAuthorize("hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @PostMapping
     public ResponseEntity<DoctorResponseDTO> createDoctor(
@@ -67,9 +71,9 @@ public class DoctorController {
     }
 
     @Operation(summary = "Get doctor by ID", description = "Fetch a doctor using its unique identifier")
-    @ApiResponse(responseCode = "200", description = "Doctor fetched successfully",
+    @ApiResponse(responseCode = "200", description = "The doctor profile was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = DoctorResponseDTO.class)))
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @GetMapping("/{doctorId}")
     public ResponseEntity<DoctorResponseDTO> getDoctorById(
             @Parameter(description = "Doctor ID")
@@ -79,8 +83,8 @@ public class DoctorController {
     }
 
     @Operation(summary = "Get all doctors", description = "Fetch all doctors with pagination")
-    @ApiResponse(responseCode = "200", description = "Doctors fetched successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid pagination parameters", content = @Content)
+    @ApiResponse(responseCode = "200", description = "A paginated list of active doctor profiles was retrieved successfully.")
+    @ApiResponse(responseCode = "400", description = "The provided pagination parameters are invalid.", content = @Content)
     @GetMapping
     public ResponseEntity<PageResponse<DoctorResponseDTO>> getAllDoctors(
             @ParameterObject Pageable pageable
@@ -92,10 +96,9 @@ public class DoctorController {
         return ResponseEntity.ok(response);
     }
 
-
     @Operation(summary = "Get all doctors including deleted records", description = "Fetch all doctors including deleted doctors with pagination")
-    @ApiResponse(responseCode = "200", description = "Doctors fetched successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid pagination parameters", content = @Content)
+    @ApiResponse(responseCode = "200", description = "A paginated list of all doctor profiles, including soft-deleted records, was retrieved successfully.")
+    @ApiResponse(responseCode = "400", description = "The provided pagination parameters are invalid.", content = @Content)
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @GetMapping("/all")
     public ResponseEntity<PageResponse<DoctorResponseDTO>> getAllDoctorsIncDel(
@@ -108,10 +111,9 @@ public class DoctorController {
         return ResponseEntity.ok(response);
     }
 
-
     @Operation(summary = "Get doctors by department", description = "Fetch all doctors belonging to a department")
-    @ApiResponse(responseCode = "200", description = "Doctors fetched successfully")
-    @ApiResponse(responseCode = "404", description = "Department not found", content = @Content)
+    @ApiResponse(responseCode = "200", description = "The list of doctors associated with the specified department was retrieved successfully.")
+    @ApiResponse(responseCode = "404", description = "The specified department could not be found or has been removed.", content = @Content)
     @GetMapping("/department/{departmentId}")
     public ResponseEntity<List<DoctorShortResponseDTO>> getDoctorsByDepartment(
             @PathVariable UUID departmentId
@@ -124,8 +126,8 @@ public class DoctorController {
             summary = "Search doctors",
             description = "Search doctors by first name, last name, full name, or department name"
     )
-    @ApiResponse(responseCode = "200", description = "Doctors fetched successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
+    @ApiResponse(responseCode = "200", description = "A paginated list of doctors matching the search criteria was retrieved successfully.")
+    @ApiResponse(responseCode = "400", description = "The search request contains invalid or missing parameters.", content = @Content)
     @GetMapping("/search")
     public ResponseEntity<PageResponse<DoctorResponseDTO>> searchDoctors(
             @RequestParam String keyword,
@@ -140,11 +142,11 @@ public class DoctorController {
     }
 
     @Operation(summary = "Partially update doctor", description = "Partially update doctor fields")
-    @ApiResponse(responseCode = "200", description = "Doctor partially updated successfully",
+    @ApiResponse(responseCode = "200", description = "The doctor profile has been successfully updated. The updated resource is returned in the response body.",
             content = @Content(schema = @Schema(implementation = DoctorResponseDTO.class)))
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor or department not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor or department could not be found or has been removed.", content = @Content)
     @PreAuthorize("hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @PatchMapping("/{doctorId}")
     public ResponseEntity<DoctorResponseDTO> patchDoctor(
@@ -155,9 +157,9 @@ public class DoctorController {
     }
 
     @Operation(summary = "Delete doctor", description = "Soft delete a doctor")
-    @ApiResponse(responseCode = "204", description = "Doctor deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "204", description = "The doctor profile has been successfully soft-deleted. No content is returned.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @DeleteMapping("/{doctorId}")
     public ResponseEntity<Void> deleteDoctor(
@@ -168,11 +170,11 @@ public class DoctorController {
     }
 
     @Operation(summary = "Restore doctor", description = "Restore a previously soft deleted doctor")
-    @ApiResponse(responseCode = "200", description = "Doctor restored successfully",
+    @ApiResponse(responseCode = "200", description = "The doctor profile has been successfully restored and is now active. The restored resource is returned in the response body.",
             content = @Content(schema = @Schema(implementation = DoctorResponseDTO.class)))
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
-    @ApiResponse(responseCode = "409", description = "Doctor is already active and cannot be restored")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "The doctor profile is currently active and does not require restoration.", content = @Content)
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @PostMapping("/{doctorId}/restore")
     public ResponseEntity<DoctorResponseDTO> restoreDoctor(
@@ -181,14 +183,13 @@ public class DoctorController {
         return ResponseEntity.ok(doctorService.restoreDoctor(doctorId));
     }
 
-    @Operation(summary = "Get doctor availability", description = "Fetch the doctor's weekly schedules and blocked dates using the doctor ID"
-    )
-    @ApiResponse(responseCode = "200", description = "Doctor availability fetched successfully",
+    @Operation(summary = "Get doctor availability", description = "Fetch the doctor's weekly schedules and blocked dates using the doctor ID")
+    @ApiResponse(responseCode = "200", description = "The availability details for the specified doctor, including weekly schedules and blocked dates, were retrieved successfully.",
             content = @Content(
                     schema = @Schema(implementation = DoctorAvailabilityResponseDTO.class)
             )
     )
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @GetMapping("/{doctorId}/availability")
     public ResponseEntity<DoctorAvailabilityResponseDTO> getDoctorAvailability(
             @Parameter(

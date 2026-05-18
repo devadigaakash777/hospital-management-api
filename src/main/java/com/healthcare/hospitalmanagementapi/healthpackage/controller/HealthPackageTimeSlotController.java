@@ -5,6 +5,7 @@ import com.healthcare.hospitalmanagementapi.healthpackage.dto.timeslot.HealthPac
 import com.healthcare.hospitalmanagementapi.healthpackage.dto.timeslot.UpdateHealthPackageTimeSlotRequestDTO;
 import com.healthcare.hospitalmanagementapi.healthpackage.service.HealthPackageTimeSlotService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,7 +31,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/health-packages/{healthPackageId}/time-slots")
 @RequiredArgsConstructor
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(responseCode = "401", description = "Authentication required. The request lacks valid credentials or the session has expired.", content = @Content)
 @Tag(name = "Health Package Time Slot Management", description = "Operations related to health package time slot management")
 public class HealthPackageTimeSlotController {
 
@@ -38,11 +39,19 @@ public class HealthPackageTimeSlotController {
 
     @PostMapping
     @Operation(summary = "Create a new time slot for a health package")
-    @ApiResponse(responseCode = "201", description = "Time slot created successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid request payload")
-    @ApiResponse(responseCode = "404", description = "Health package not found")
-    @ApiResponse(responseCode = "409", description = "Time slot conflict or overlap")
-    @ApiResponse(responseCode = "403", description = "Forbidden")
+    @ApiResponse(responseCode = "201", description = "The time slot has been successfully created. The Location header contains the URI of the newly created resource.")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified health package could not be found or has been removed.", content = @Content)
+    @ApiResponse(
+            responseCode = "409",
+            description = """
+                The request could not be completed due to a conflict with the current state of the resource:
+                - The start time must be earlier than the end time.
+                - The requested time range overlaps with an existing time slot for this health package.
+                """,
+            content = @Content
+    )
     @PreAuthorize("hasAuthority('CAN_MANAGE_HEALTH_PACKAGES')")
     public ResponseEntity<HealthPackageTimeSlotResponseDTO> create(
             @PathVariable UUID healthPackageId,
@@ -54,11 +63,10 @@ public class HealthPackageTimeSlotController {
         return ResponseEntity.created(location).body(response);
     }
 
-
     @GetMapping
     @Operation(summary = "Get all time slots for a health package")
-    @ApiResponse(responseCode = "200", description = "Time slots retrieved successfully")
-    @ApiResponse(responseCode = "404", description = "Health package not found")
+    @ApiResponse(responseCode = "200", description = "The list of time slots for the specified health package was retrieved successfully.")
+    @ApiResponse(responseCode = "404", description = "The specified health package could not be found or has been removed.", content = @Content)
     public ResponseEntity<List<HealthPackageTimeSlotResponseDTO>> getAllByHealthPackage(
             @PathVariable UUID healthPackageId
     ) {
@@ -67,10 +75,10 @@ public class HealthPackageTimeSlotController {
 
     @GetMapping("/available")
     @Operation(summary = "Get available time slots for a health package on a given date")
-    @ApiResponse(responseCode = "200", description = "Available time slots retrieved successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid date format")
-    @ApiResponse(responseCode = "404", description = "Health package not found")
-    @ApiResponse(responseCode = "409", description = "Health package not available for selected date")
+    @ApiResponse(responseCode = "200", description = "The list of available time slots for the specified health package and appointment date was retrieved successfully.")
+    @ApiResponse(responseCode = "400", description = "The provided date is missing or does not conform to the expected ISO format (yyyy-MM-dd).", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified health package could not be found or has been removed.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "The health package is not available on the requested appointment date based on its weekly schedule or advance booking configuration.", content = @Content)
     public ResponseEntity<List<HealthPackageTimeSlotResponseDTO>> getAvailableSlots(
             @PathVariable UUID healthPackageId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate appointmentDate
@@ -78,14 +86,21 @@ public class HealthPackageTimeSlotController {
         return ResponseEntity.ok(healthPackageTimeSlotService.getAvailableSlots(healthPackageId, appointmentDate));
     }
 
-
     @PatchMapping("/{slotId}")
     @Operation(summary = "Partially update a time slot for a health package")
-    @ApiResponse(responseCode = "200", description = "Time slot updated successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid request payload")
-    @ApiResponse(responseCode = "404", description = "Health package or time slot not found")
-    @ApiResponse(responseCode = "409", description = "Time slot conflict or overlap")
-    @ApiResponse(responseCode = "403", description = "Forbidden")
+    @ApiResponse(responseCode = "200", description = "The time slot has been successfully updated. The updated resource is returned in the response body.")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified health package or time slot could not be found or has been removed.", content = @Content)
+    @ApiResponse(
+            responseCode = "409",
+            description = """
+                The request could not be completed due to a conflict with the current state of the resource:
+                - The start time must be earlier than the end time.
+                - The requested time range overlaps with an existing time slot for this health package.
+                """,
+            content = @Content
+    )
     @PreAuthorize("hasAuthority('CAN_MANAGE_HEALTH_PACKAGES')")
     public ResponseEntity<HealthPackageTimeSlotResponseDTO> update(
             @PathVariable UUID healthPackageId,
@@ -95,12 +110,11 @@ public class HealthPackageTimeSlotController {
         return ResponseEntity.ok(healthPackageTimeSlotService.update(healthPackageId, slotId, request));
     }
 
-
     @DeleteMapping("/{slotId}")
     @Operation(summary = "Delete a time slot for a health package")
-    @ApiResponse(responseCode = "204", description = "Time slot deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Health package or time slot not found")
-    @ApiResponse(responseCode = "403", description = "Forbidden")
+    @ApiResponse(responseCode = "204", description = "The time slot has been successfully deleted. No content is returned.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified health package or time slot could not be found or has been removed.", content = @Content)
     @PreAuthorize("hasAuthority('CAN_MANAGE_HEALTH_PACKAGES')")
     public ResponseEntity<Void> delete(
             @PathVariable UUID healthPackageId,

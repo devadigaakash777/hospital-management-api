@@ -54,21 +54,27 @@ public class User extends BaseEntity {
     @JoinColumn(name = "group_id")
     private UserGroup group;
 
+    @Builder.Default
     @Column(name = "can_manage_doctor_slots")
     private Boolean canManageDoctorSlots = false;
 
+    @Builder.Default
     @Column(name = "can_manage_staff")
     private Boolean canManageStaff = false;
 
+    @Builder.Default
     @Column(name = "can_manage_groups")
     private Boolean canManageGroups = false;
 
+    @Builder.Default
     @Column(name = "can_export_reports")
     private Boolean canExportReports = false;
 
+    @Builder.Default
     @Column(name = "can_manage_health_packages")
     private Boolean canManageHealthPackages = false;
 
+    @Builder.Default
     @ManyToMany
     @JoinTable(
             name = "user_departments",
@@ -77,6 +83,7 @@ public class User extends BaseEntity {
     )
     private Set<Department> departments = new HashSet<>();
 
+    @Builder.Default
     @Column(name = "must_change_password", nullable = false)
     private Boolean mustChangePassword = true;
 }

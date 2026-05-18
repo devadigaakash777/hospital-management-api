@@ -25,7 +25,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/doctors/{doctorId}/time-slots")
 @RequiredArgsConstructor
 @Tag(name = "Doctor Time Slot Management", description = "Operations related to doctor time slot management")
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(responseCode = "401", description = "Authentication required. The request lacks valid credentials or the session has expired.", content = @Content)
 public class DoctorTimeSlotController {
 
     private final DoctorTimeSlotService doctorTimeSlotService;
@@ -33,20 +33,21 @@ public class DoctorTimeSlotController {
     @Operation(summary = "Create doctor time slot")
     @ApiResponse(
             responseCode = "201",
-            description = "Doctor time slot created successfully",
+            description = "The time slot has been successfully created. The Location header contains the URI of the newly created resource.",
             content = @Content(schema = @Schema(implementation = DoctorTimeSlotResponseDTO.class))
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission", content = @Content)
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @ApiResponse(
             responseCode = "409",
             description = """
-                Conflict occurred:
-                - Start time must be before end time
-                - Reserved slots cannot be greater than total slots
-                - Time slot overlaps with an existing time slot
-                """
+                The request could not be completed due to a conflict with the current state of the resource:
+                - The start time must be earlier than the end time.
+                - The number of reserved slots must not exceed the total slot capacity.
+                - The requested time range overlaps with an existing time slot for this doctor.
+                """,
+            content = @Content
     )
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId) or hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @PostMapping
@@ -66,10 +67,10 @@ public class DoctorTimeSlotController {
     @Operation(summary = "Get all doctor time slots")
     @ApiResponse(
             responseCode = "200",
-            description = "Doctor time slots fetched successfully",
+            description = "The list of time slots for the specified doctor was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = DoctorTimeSlotResponseDTO.class))
     )
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @GetMapping
     public ResponseEntity<List<DoctorTimeSlotResponseDTO>> getAllTimeSlots(
             @PathVariable UUID doctorId
@@ -80,20 +81,21 @@ public class DoctorTimeSlotController {
     @Operation(summary = "Partially update doctor time slot")
     @ApiResponse(
             responseCode = "200",
-            description = "Doctor time slot updated successfully",
+            description = "The time slot has been successfully updated. The updated resource is returned in the response body.",
             content = @Content(schema = @Schema(implementation = DoctorTimeSlotResponseDTO.class))
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor or time slot not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor or time slot could not be found or has been removed.", content = @Content)
     @ApiResponse(
             responseCode = "409",
             description = """
-                Conflict occurred:
-                - Start time must be before end time
-                - Reserved slots cannot be greater than total slots
-                - Time slot overlaps with an existing time slot
-                """
+                The request could not be completed due to a conflict with the current state of the resource:
+                - The start time must be earlier than the end time.
+                - The number of reserved slots must not exceed the total slot capacity.
+                - The requested time range overlaps with an existing time slot for this doctor.
+                """,
+            content = @Content
     )
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId) or hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @PatchMapping("/{slotId}")
@@ -108,9 +110,9 @@ public class DoctorTimeSlotController {
     }
 
     @Operation(summary = "Delete doctor time slot")
-    @ApiResponse(responseCode = "204", description = "Doctor time slot deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Doctor or time slot not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "204", description = "The time slot has been successfully deleted. No content is returned.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor or time slot could not be found or has been removed.", content = @Content)
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId) or  hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @DeleteMapping("/{slotId}")
     public ResponseEntity<Void> deleteTimeSlot(
@@ -136,7 +138,7 @@ public class DoctorTimeSlotController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Available doctor time slots fetched successfully",
+            description = "The list of available time slots for the specified doctor and appointment date was retrieved successfully.",
             content = @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = DoctorTimeSlotResponseDTO.class)
@@ -145,19 +147,18 @@ public class DoctorTimeSlotController {
     @ApiResponse(
             responseCode = "400",
             description = """
-                Invalid request:
-                - Appointment date is missing or invalid
-                - Appointment date is outside advance booking limit
-                """
+                The request could not be processed due to invalid input:
+                - The appointment date is missing or does not conform to the expected ISO format (yyyy-MM-dd).
+                - The appointment date exceeds the doctor's advance booking limit.
+                """,
+            content = @Content
     )
     @ApiResponse(
             responseCode = "409",
-            description = """
-                Invalid request:
-                - Doctor is not available
-                """
+            description = "The doctor is not available on the requested appointment date based on their weekly schedule or blocked date configuration.",
+            content = @Content
     )
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @GetMapping("/available")
     public ResponseEntity<List<DoctorTimeSlotResponseDTO>> getAvailableSlots(
             @PathVariable UUID doctorId,

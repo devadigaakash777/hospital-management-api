@@ -25,7 +25,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/doctors/{doctorId}/blocked-dates")
 @RequiredArgsConstructor
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(responseCode = "401", description = "Authentication required. The request lacks valid credentials or the session has expired.", content = @Content)
 @Tag(name = "Doctor Blocked Date Management", description = "Operations related to doctor blocked date management")
 public class DoctorBlockedDateController {
 
@@ -34,13 +34,13 @@ public class DoctorBlockedDateController {
     @Operation(summary = "Create blocked date for doctor")
     @ApiResponse(
             responseCode = "201",
-            description = "Blocked date created successfully",
+            description = "The blocked date has been successfully created. The Location header contains the URI of the newly created resource.",
             content = @Content(schema = @Schema(implementation = DoctorBlockedDateResponseDTO.class))
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
-    @ApiResponse(responseCode = "409", description = "Doctor already has a blocked date on the given date")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "A blocked date already exists for the specified doctor on the given date. Duplicate blocked dates are not permitted.", content = @Content)
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId)")
     @PostMapping
     public ResponseEntity<DoctorBlockedDateResponseDTO> createBlockedDate(
@@ -60,10 +60,10 @@ public class DoctorBlockedDateController {
     @Operation(summary = "Get blocked date by ID")
     @ApiResponse(
             responseCode = "200",
-            description = "Blocked date fetched successfully",
+            description = "The blocked date record was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = DoctorBlockedDateResponseDTO.class))
     )
-    @ApiResponse(responseCode = "404", description = "Blocked date not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "No blocked date record was found for the provided identifier.", content = @Content)
     @GetMapping("/{blockedDateId}")
     public ResponseEntity<DoctorBlockedDateResponseDTO> getBlockedDateById(
             @PathVariable UUID blockedDateId
@@ -76,10 +76,10 @@ public class DoctorBlockedDateController {
     @Operation(summary = "Get blocked dates for doctor")
     @ApiResponse(
             responseCode = "200",
-            description = "Blocked dates fetched successfully",
+            description = "A paginated list of blocked dates for the specified doctor was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = PageResponse.class))
     )
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @GetMapping
     public ResponseEntity<PageResponse<DoctorBlockedDateResponseDTO>> getBlockedDatesByDoctor(
             @PathVariable UUID doctorId,
@@ -93,13 +93,13 @@ public class DoctorBlockedDateController {
     @Operation(summary = "Get blocked dates by date range")
     @ApiResponse(
             responseCode = "200",
-            description = "Blocked dates by range fetched successfully",
+            description = "A paginated list of blocked dates within the specified date range was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = PageResponse.class))
     )
-    @ApiResponse(responseCode = "400", description = "Invalid date range", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
-    @ApiResponse(responseCode = "409", description = "Start date cannot be after end date")
+    @ApiResponse(responseCode = "400", description = "The provided date range is invalid. Ensure both dates are in ISO format (yyyy-MM-dd).", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "The start date must not be after the end date. Please provide a valid chronological date range.", content = @Content)
     @GetMapping("/range")
     public ResponseEntity<PageResponse<DoctorBlockedDateResponseDTO>> getBlockedDatesByDateRange(
             @PathVariable UUID doctorId,
@@ -118,10 +118,10 @@ public class DoctorBlockedDateController {
     }
 
     @Operation(summary = "Delete blocked date")
-    @ApiResponse(responseCode = "204", description = "Blocked date deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Blocked date not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
-    @ApiResponse(responseCode = "409", description = "Blocked date can only be deleted before the first doctor time slot starts")
+    @ApiResponse(responseCode = "204", description = "The blocked date has been successfully deleted. No content is returned.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "No blocked date record was found for the provided identifier.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "The blocked date cannot be deleted once the doctor's first time slot for that day has already started.", content = @Content)
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @DeleteMapping("/{blockedDateId}")
     public ResponseEntity<Void> deleteBlockedDate(

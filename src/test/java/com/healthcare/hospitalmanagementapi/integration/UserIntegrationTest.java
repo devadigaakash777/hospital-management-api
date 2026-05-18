@@ -122,9 +122,12 @@ class UserIntegrationTest {
     private User savedUser(String email) {
         return userRepository.save(
                 User.builder()
-                        .firstName("Test").lastName("User")
-                        .email(email).password("pass")
+                        .firstName("Test")
+                        .lastName("User")
+                        .email(email)
+                        .password("pass")
                         .role(Role.STAFF)
+                        .mustChangePassword(true)   // <-- required, builder ignores entity default
                         .build());
     }
 
@@ -301,9 +304,13 @@ class UserIntegrationTest {
     void shouldRestoreUser() throws Exception {
         User user = userRepository.save(
                 User.builder()
-                        .firstName("Restore").lastName("User")
-                        .email("restore@test.com").password("pass")
-                        .role(Role.STAFF).isDeleted(true)
+                        .firstName("Restore")
+                        .lastName("User")
+                        .email("restore@test.com")
+                        .password("pass")
+                        .role(Role.STAFF)
+                        .isDeleted(true)
+                        .mustChangePassword(true)
                         .build());
 
         mockMvc.perform(post("/api/v1/users/restore")

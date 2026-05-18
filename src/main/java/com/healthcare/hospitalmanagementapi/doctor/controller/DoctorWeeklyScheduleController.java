@@ -31,7 +31,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/doctors/{doctorId}/weekly-schedules")
 @RequiredArgsConstructor
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(responseCode = "401", description = "Authentication required. The request lacks valid credentials or the session has expired.", content = @Content)
 @Tag(
         name = "Doctor Weekly Schedule Management",
         description = "Operations related to doctor weekly schedule management"
@@ -46,15 +46,15 @@ public class DoctorWeeklyScheduleController {
     )
     @ApiResponse(
             responseCode = "201",
-            description = "Weekly schedules created successfully",
+            description = "One or more weekly schedule entries have been successfully created. The Location header references the collection URI.",
             content = @Content(
                     array = @ArraySchema(schema = @Schema(implementation = DoctorWeeklyScheduleResponseDTO.class))
             )
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
-    @ApiResponse(responseCode = "409", description = "Duplicate schedule exists", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "One or more schedule entries in the request conflict with existing records for the same doctor, week number, and day of week.", content = @Content)
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId) or hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @PostMapping
     public ResponseEntity<List<DoctorWeeklyScheduleResponseDTO>> createWeeklySchedules(
@@ -76,12 +76,12 @@ public class DoctorWeeklyScheduleController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Weekly schedules fetched successfully",
+            description = "The list of weekly schedule entries for the specified doctor was retrieved successfully.",
             content = @Content(
                     array = @ArraySchema(schema = @Schema(implementation = DoctorWeeklyScheduleResponseDTO.class))
             )
     )
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @GetMapping
     public ResponseEntity<List<DoctorWeeklyScheduleResponseDTO>> getAllWeeklySchedules(
             @PathVariable UUID doctorId
@@ -95,10 +95,10 @@ public class DoctorWeeklyScheduleController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Weekly schedule fetched successfully",
+            description = "The weekly schedule entry was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = DoctorWeeklyScheduleResponseDTO.class))
     )
-    @ApiResponse(responseCode = "404", description = "Doctor or schedule not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor or weekly schedule entry could not be found or has been removed.", content = @Content)
     @GetMapping("/{scheduleId}")
     public ResponseEntity<DoctorWeeklyScheduleResponseDTO> getWeeklyScheduleById(
             @PathVariable UUID doctorId,
@@ -113,15 +113,15 @@ public class DoctorWeeklyScheduleController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Weekly schedules updated successfully",
+            description = "The weekly schedule entries have been successfully replaced. The updated collection is returned in the response body.",
             content = @Content(
                     array = @ArraySchema(schema = @Schema(implementation = DoctorWeeklyScheduleResponseDTO.class))
             )
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor or schedule not found", content = @Content)
-    @ApiResponse(responseCode = "409", description = "Duplicate schedule exists", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor or one or more schedule entries could not be found or have been removed.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "The request contains duplicate schedule entries for the same week number and day of week combination.", content = @Content)
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId) or hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @PutMapping
     public ResponseEntity<List<DoctorWeeklyScheduleResponseDTO>> updateWeeklySchedules(
@@ -135,9 +135,9 @@ public class DoctorWeeklyScheduleController {
             summary = "Delete weekly schedules",
             description = "Delete one or more weekly schedule entries for the specified doctor"
     )
-    @ApiResponse(responseCode = "204", description = "Weekly schedules deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Doctor or schedule not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "204", description = "The specified weekly schedule entries have been successfully deleted. No content is returned.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor or one or more schedule entries could not be found or have been removed.", content = @Content)
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId) or hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @DeleteMapping
     public ResponseEntity<Void> deleteWeeklySchedules(

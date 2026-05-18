@@ -4,6 +4,8 @@ import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
 import com.healthcare.hospitalmanagementapi.department.dto.*;
 import com.healthcare.hospitalmanagementapi.department.service.DepartmentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
@@ -19,15 +21,39 @@ import java.util.UUID;
 @RequestMapping("/api/v1/departments")
 @RequiredArgsConstructor
 @Tag(name = "Department Management", description = "Operations related to department management")
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(
+        responseCode = "401",
+        description = "Authentication required — no valid credentials were provided. Ensure a valid Bearer token is included in the Authorization header.",
+        content = @Content
+)
 public class DepartmentController {
 
     private final DepartmentService departmentService;
 
     @Operation(summary = "Create a new department")
-    @ApiResponse(responseCode = "201", description = "Department created successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid input")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(
+            responseCode = "201",
+            description = "Department created successfully. The Location header contains the URI of the newly created resource.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DepartmentResponseDTO.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "The request body is invalid or one or more required fields failed validation.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "Access denied — only users with the ADMIN role are permitted to create departments.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "A department with the same name already exists and is currently active.",
+            content = @Content
+    )
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<DepartmentResponseDTO> createDepartment(
@@ -39,8 +65,19 @@ public class DepartmentController {
     }
 
     @Operation(summary = "Get department by ID")
-    @ApiResponse(responseCode = "200", description = "Department fetched successfully")
-    @ApiResponse(responseCode = "404", description = "Department not found")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Department retrieved successfully.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DepartmentResponseDTO.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "No active department was found with the provided identifier.",
+            content = @Content
+    )
     @GetMapping("/{departmentId}")
     public ResponseEntity<DepartmentResponseDTO> getDepartmentById(
             @PathVariable UUID departmentId
@@ -49,7 +86,14 @@ public class DepartmentController {
     }
 
     @Operation(summary = "Get all departments with pagination")
-    @ApiResponse(responseCode = "200", description = "Departments fetched successfully")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Paginated list of active departments retrieved successfully, ordered by creation date descending.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PageResponse.class)
+            )
+    )
     @GetMapping
     public ResponseEntity<PageResponse<DepartmentResponseDTO>> getAllDepartments(
             @RequestParam(defaultValue = "0") int page,
@@ -59,9 +103,34 @@ public class DepartmentController {
     }
 
     @Operation(summary = "Update department (partial update)")
-    @ApiResponse(responseCode = "200", description = "Department updated successfully")
-    @ApiResponse(responseCode = "404", description = "Department not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Department updated successfully. Returns the full updated department record.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DepartmentResponseDTO.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "The request body is invalid or one or more fields failed validation.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "Access denied — only users with the ADMIN role are permitted to update departments.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "No active department was found with the provided identifier.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "A department with the requested name already exists and is currently active.",
+            content = @Content
+    )
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{departmentId}")
     public ResponseEntity<DepartmentResponseDTO> updateDepartment(
@@ -72,7 +141,19 @@ public class DepartmentController {
     }
 
     @Operation(summary = "Search departments")
-    @ApiResponse(responseCode = "200", description = "Departments fetched successfully")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Paginated list of departments matching the provided keyword retrieved successfully. Returns an empty page if no records match.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PageResponse.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "The search keyword or pagination parameters are invalid.",
+            content = @Content
+    )
     @GetMapping("/search")
     public ResponseEntity<PageResponse<DepartmentResponseDTO>> searchDepartments(
             @RequestParam String keyword,
@@ -83,9 +164,20 @@ public class DepartmentController {
     }
 
     @Operation(summary = "Delete department (soft delete)")
-    @ApiResponse(responseCode = "204", description = "Department deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Department not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(
+            responseCode = "204",
+            description = "Department soft-deleted successfully. The record is retained in the system and can be restored if required."
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "Access denied — only users with the ADMIN role are permitted to delete departments.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "No active department was found with the provided identifier.",
+            content = @Content
+    )
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{departmentId}")
     public ResponseEntity<Void> deleteDepartment(
@@ -96,9 +188,29 @@ public class DepartmentController {
     }
 
     @Operation(summary = "Restore department by ID")
-    @ApiResponse(responseCode = "204", description = "Department restored successfully")
-    @ApiResponse(responseCode = "404", description = "Department not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Department restored successfully. Returns the full department record in its reinstated active state.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DepartmentResponseDTO.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "Access denied — only users with the ADMIN role are permitted to restore departments.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "No department was found with the provided identifier.",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "The department is already in an active state and cannot be restored again.",
+            content = @Content
+    )
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{departmentId}/restore")
     public ResponseEntity<DepartmentResponseDTO> restoreDepartment(

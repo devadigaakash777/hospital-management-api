@@ -26,7 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/doctors/{doctorId}/blocked-time-slots")
 @RequiredArgsConstructor
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(responseCode = "401", description = "Authentication required. The request lacks valid credentials or the session has expired.", content = @Content)
 @Tag(name = "Doctor Blocked Time Slot Management", description = "Operations related to doctor blocked time slot management")
 public class DoctorBlockedTimeSlotController {
 
@@ -35,19 +35,20 @@ public class DoctorBlockedTimeSlotController {
     @Operation(summary = "Create blocked time slot for doctor")
     @ApiResponse(
             responseCode = "201",
-            description = "Blocked time slot created successfully",
+            description = "The blocked time slot has been successfully created. The Location header contains the URI of the newly created resource.",
             content = @Content(schema = @Schema(implementation = DoctorBlockedTimeSlotResponseDTO.class))
     )
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @ApiResponse(
             responseCode = "409",
             description = """
-                Conflict occurred:
-                - Start time must be before end time
-                - Blocked time slot overlaps with an existing blocked time slot
-                """
+                The request could not be completed due to a conflict with the current state of the resource:
+                - The provided start time must be earlier than the end time.
+                - The requested time range overlaps with an existing blocked time slot for this doctor.
+                """,
+            content = @Content
     )
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId)")
     @PostMapping
@@ -68,10 +69,10 @@ public class DoctorBlockedTimeSlotController {
     @Operation(summary = "Get blocked time slot by ID")
     @ApiResponse(
             responseCode = "200",
-            description = "Blocked time slot fetched successfully",
+            description = "The blocked time slot record was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = DoctorBlockedTimeSlotResponseDTO.class))
     )
-    @ApiResponse(responseCode = "404", description = "Blocked time slot not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "No blocked time slot record was found for the provided identifier.", content = @Content)
     @GetMapping("/{blockedTimeSlotId}")
     public ResponseEntity<DoctorBlockedTimeSlotResponseDTO> getBlockedTimeSlotById(
             @PathVariable UUID blockedTimeSlotId
@@ -84,10 +85,10 @@ public class DoctorBlockedTimeSlotController {
     @Operation(summary = "Get blocked time slots for doctor")
     @ApiResponse(
             responseCode = "200",
-            description = "Blocked time slots fetched successfully",
+            description = "A paginated list of blocked time slots for the specified doctor was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = PageResponse.class))
     )
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @GetMapping
     public ResponseEntity<PageResponse<DoctorBlockedTimeSlotResponseDTO>> getBlockedTimeSlotsByDoctor(
             @PathVariable UUID doctorId,
@@ -101,11 +102,11 @@ public class DoctorBlockedTimeSlotController {
     @Operation(summary = "Get blocked time slots by date")
     @ApiResponse(
             responseCode = "200",
-            description = "Blocked time slots fetched successfully",
+            description = "A paginated list of blocked time slots for the specified doctor and date was retrieved successfully.",
             content = @Content(schema = @Schema(implementation = PageResponse.class))
     )
-    @ApiResponse(responseCode = "400", description = "Invalid date", content = @Content)
-    @ApiResponse(responseCode = "404", description = "Doctor not found", content = @Content)
+    @ApiResponse(responseCode = "400", description = "The provided date is missing or does not conform to the expected ISO format (yyyy-MM-dd).", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified doctor could not be found or has been removed.", content = @Content)
     @GetMapping("/date")
     public ResponseEntity<PageResponse<DoctorBlockedTimeSlotResponseDTO>> getBlockedTimeSlotsByDate(
             @PathVariable UUID doctorId,
@@ -124,15 +125,15 @@ public class DoctorBlockedTimeSlotController {
     }
 
     @Operation(summary = "Delete blocked time slot")
-    @ApiResponse(responseCode = "204", description = "Blocked time slot deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Blocked time slot not found", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "204", description = "The blocked time slot has been successfully deleted. No content is returned.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "No blocked time slot record was found for the provided identifier.", content = @Content)
     @ApiResponse(
             responseCode = "409",
             description = """
-                Conflict occurred:
-                - Past blocked time slot cannot be deleted
-                - Blocked time slot can only be deleted before the blocked start time
+                The request could not be completed due to a conflict with the current state of the resource:
+                - Blocked time slots that have already passed cannot be deleted.
+                - A blocked time slot may only be deleted prior to its scheduled start time.
                 """
     )
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
@@ -147,21 +148,22 @@ public class DoctorBlockedTimeSlotController {
     @Operation(summary = "Update blocked time slot")
     @ApiResponse(
             responseCode = "200",
-            description = "Blocked time slot updated successfully",
+            description = "The blocked time slot has been successfully updated. The updated resource is returned in the response body.",
             content = @Content(schema = @Schema(implementation = DoctorBlockedTimeSlotResponseDTO.class))
     )
-    @ApiResponse(responseCode = "404", description = "Blocked time slot not found", content = @Content)
-    @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "No blocked time slot record was found for the provided identifier.", content = @Content)
     @ApiResponse(
             responseCode = "409",
             description = """
-        Conflict occurred:
-        - Past blocked time slot cannot be updated
-        - Start time can only be updated before the blocked slot start time
-        - End time must be greater than current time
-        - End time must be after start time
-        """
+                The request could not be completed due to a conflict with the current state of the resource:
+                - Blocked time slots that have already passed cannot be modified.
+                - The start time may only be updated before the scheduled block begins.
+                - The end time must be greater than the current time.
+                - The end time must be later than the start time.
+                """,
+            content = @Content
     )
     @PreAuthorize("@doctorSecurity.isSelfOrAdmin(#doctorId)")
     @PatchMapping("/{blockedTimeSlotId}")

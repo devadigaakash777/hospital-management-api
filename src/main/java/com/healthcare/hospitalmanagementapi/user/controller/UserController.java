@@ -7,6 +7,7 @@ import com.healthcare.hospitalmanagementapi.user.dto.email.VerifyEmailRequestDTO
 import com.healthcare.hospitalmanagementapi.user.dto.user.*;
 import com.healthcare.hospitalmanagementapi.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
@@ -24,16 +25,16 @@ import java.util.UUID;
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @Tag(name = "User Management", description = "Operations related to user management")
-@ApiResponse(responseCode = "401", description = "Unauthorized - User not logged in")
+@ApiResponse(responseCode = "401", description = "Authentication required. The request lacks valid credentials or the session has expired.", content = @Content)
 public class UserController {
 
     private final UserService userService;
 
     @Operation(summary = "Initiate user creation — sends OTP to email")
-    @ApiResponse(responseCode = "202", description = "OTP sent to email")
-    @ApiResponse(responseCode = "400", description = "Invalid input")
-    @ApiResponse(responseCode = "409", description = "Email already exists")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "202", description = "The request has been accepted. A one-time password (OTP) has been dispatched to the provided email address to complete the registration process.")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.")
+    @ApiResponse(responseCode = "409", description = "The provided email address is already associated with an existing account.")
     @PreAuthorize("hasAuthority('CAN_MANAGE_STAFF')")
     @PostMapping
     public ResponseEntity<Void> createUser(
@@ -44,8 +45,8 @@ public class UserController {
     }
 
     @Operation(summary = "Verify email OTP — completes user creation")
-    @ApiResponse(responseCode = "201", description = "User created successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid or expired OTP")
+    @ApiResponse(responseCode = "201", description = "The user account has been successfully created following OTP verification. The Location header contains the URI of the newly created resource.")
+    @ApiResponse(responseCode = "400", description = "The provided OTP is invalid or has expired. Please request a new OTP to proceed.", content = @Content)
     @PostMapping("/verify-email")
     public ResponseEntity<UserResponseDTO> verifyEmail(
             @RequestBody @Valid VerifyEmailRequestDTO request
@@ -56,9 +57,9 @@ public class UserController {
     }
 
     @Operation(summary = "Resend OTP for a pending user")
-    @ApiResponse(responseCode = "204", description = "OTP resent successfully")
-    @ApiResponse(responseCode = "404", description = "No pending registration for this email")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "204", description = "A new OTP has been successfully dispatched to the email address associated with the pending registration. No content is returned.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.")
+    @ApiResponse(responseCode = "404", description = "No pending registration was found for the provided email address.")
     @PreAuthorize("hasAuthority('CAN_MANAGE_STAFF')")
     @PostMapping("/resend-otp")
     public ResponseEntity<Void> resendOtp(
@@ -69,11 +70,11 @@ public class UserController {
     }
 
     @Operation(summary = "Initiate email change — sends OTP to new email address")
-    @ApiResponse(responseCode = "202", description = "OTP sent to new email address")
-    @ApiResponse(responseCode = "400", description = "New email is the same as current, or invalid input")
-    @ApiResponse(responseCode = "404", description = "User not found")
-    @ApiResponse(responseCode = "409", description = "New email already in use")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "202", description = "The request has been accepted. A one-time password (OTP) has been dispatched to the new email address to confirm the change.")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed, or the provided email address is identical to the current one.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.")
+    @ApiResponse(responseCode = "404", description = "The specified user could not be found or has been removed.")
+    @ApiResponse(responseCode = "409", description = "The provided email address is already associated with an existing account.")
     @PreAuthorize("@userSecurity.isSelfOrAdmin(#userId) or hasAuthority('CAN_MANAGE_STAFF')")
     @PostMapping("/{userId}/change-email")
     public ResponseEntity<Void> initiateEmailChange(
@@ -85,10 +86,10 @@ public class UserController {
     }
 
     @Operation(summary = "Verify OTP — applies the email change")
-    @ApiResponse(responseCode = "200", description = "Email updated successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid or expired OTP")
-    @ApiResponse(responseCode = "404", description = "User not found")
-    @ApiResponse(responseCode = "409", description = "New email already in use")
+    @ApiResponse(responseCode = "200", description = "The email address has been successfully updated following OTP verification. The updated user profile is returned in the response body.")
+    @ApiResponse(responseCode = "400", description = "The provided OTP is invalid or has expired. Please request a new OTP to proceed.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified user could not be found or has been removed.", content = @Content)
+    @ApiResponse(responseCode = "409", description = "The provided email address is already associated with an existing account.", content = @Content)
     @PostMapping("/verify-email-change")
     public ResponseEntity<UserResponseDTO> verifyEmailChange(
             @RequestBody @Valid VerifyEmailChangeRequestDTO request
@@ -97,9 +98,9 @@ public class UserController {
     }
 
     @Operation(summary = "Get user by ID")
-    @ApiResponse(responseCode = "200", description = "User fetched successfully")
-    @ApiResponse(responseCode = "404", description = "User not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "200", description = "The user profile was retrieved successfully.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified user could not be found or has been removed.", content = @Content)
     @PreAuthorize("@userSecurity.isSelfOrAdmin(#userId) or hasAuthority('CAN_MANAGE_STAFF')")
     @GetMapping("/{userId}")
     public ResponseEntity<UserResponseDTO> getUserById(
@@ -109,8 +110,8 @@ public class UserController {
     }
 
     @Operation(summary = "Get current logged-in user")
-    @ApiResponse(responseCode = "200", description = "User fetched successfully")
-    @ApiResponse(responseCode = "404", description = "User not found")
+    @ApiResponse(responseCode = "200", description = "The profile of the currently authenticated user was retrieved successfully.")
+    @ApiResponse(responseCode = "404", description = "The user account associated with the current session could not be found.", content = @Content)
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -119,8 +120,8 @@ public class UserController {
     }
 
     @Operation(summary = "Get all users with pagination")
-    @ApiResponse(responseCode = "200", description = "Users fetched successfully")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "200", description = "A paginated list of user profiles was retrieved successfully.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
     @PreAuthorize("hasAuthority('CAN_MANAGE_STAFF') or hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @GetMapping
     public ResponseEntity<PageResponse<UserResponseDTO>> getAllUsers(
@@ -131,9 +132,9 @@ public class UserController {
     }
 
     @Operation(summary = "Update user (partial update supported)")
-    @ApiResponse(responseCode = "200", description = "User updated successfully")
-    @ApiResponse(responseCode = "404", description = "User not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "200", description = "The user profile has been successfully updated. The updated resource is returned in the response body.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "The specified user could not be found or has been removed.", content = @Content)
     @PreAuthorize("hasAuthority('CAN_MANAGE_STAFF')")
     @PatchMapping("/{userId}")
     public ResponseEntity<UserResponseDTO> updateUser(
@@ -144,9 +145,9 @@ public class UserController {
     }
 
     @Operation(summary = "Delete user (soft delete)")
-    @ApiResponse(responseCode = "204", description = "User deleted successfully")
-    @ApiResponse(responseCode = "404", description = "User not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "204", description = "The user account has been successfully soft-deleted. No content is returned.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.")
+    @ApiResponse(responseCode = "404", description = "The specified user could not be found or has been removed.")
     @DeleteMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_STAFF')")
     public ResponseEntity<Void> deleteUser(
@@ -157,9 +158,9 @@ public class UserController {
     }
 
     @Operation(summary = "Restore user by email")
-    @ApiResponse(responseCode = "200", description = "User restored successfully")
-    @ApiResponse(responseCode = "404", description = "User not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "200", description = "The user account has been successfully restored and is now active. The restored user profile is returned in the response body.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.", content = @Content)
+    @ApiResponse(responseCode = "404", description = "No user account associated with the provided email address could be found.", content = @Content)
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('CAN_MANAGE_STAFF')")
     @PostMapping("/restore")
     public ResponseEntity<UserResponseDTO> restoreUser(
@@ -169,10 +170,10 @@ public class UserController {
     }
 
     @Operation(summary = "Change user password")
-    @ApiResponse(responseCode = "204", description = "Password changed successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid password")
-    @ApiResponse(responseCode = "404", description = "User not found")
-    @ApiResponse(responseCode = "403", description = "You do not have permission")
+    @ApiResponse(responseCode = "204", description = "The password has been successfully updated. The user may now authenticate using the new credentials. No content is returned.")
+    @ApiResponse(responseCode = "400", description = "The current password is incorrect, the new password does not meet the required policy, or both passwords are identical.")
+    @ApiResponse(responseCode = "403", description = "Access denied. The authenticated user does not have sufficient privileges to perform this operation.")
+    @ApiResponse(responseCode = "404", description = "The specified user could not be found or has been removed.")
     @PreAuthorize("@userSecurity.isSelfOrAdmin(#userId) or hasAuthority('CAN_MANAGE_STAFF')")
     @PostMapping("/{userId}/change-password")
     public ResponseEntity<Void> changePassword(
@@ -184,7 +185,7 @@ public class UserController {
     }
 
     @Operation(summary = "Search users")
-    @ApiResponse(responseCode = "200", description = "Users fetched successfully")
+    @ApiResponse(responseCode = "200", description = "A paginated list of users matching the search criteria was retrieved successfully.")
     @PreAuthorize("hasAuthority('CAN_MANAGE_STAFF') or hasAuthority('CAN_MANAGE_DOCTOR_SLOTS')")
     @GetMapping("/search")
     public ResponseEntity<PageResponse<UserResponseDTO>> searchUsers(

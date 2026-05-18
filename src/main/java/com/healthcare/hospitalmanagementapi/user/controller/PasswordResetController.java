@@ -24,8 +24,8 @@ public class PasswordResetController {
             description = "Always returns 202 to prevent email enumeration. " +
                     "An OTP is sent only if the email belongs to an active account."
     )
-    @ApiResponse(responseCode = "202", description = "If the email is registered, an OTP has been sent")
-    @ApiResponse(responseCode = "400", description = "Invalid input")
+    @ApiResponse(responseCode = "202", description = "The request has been accepted. If the provided email address is associated with an active account, a one-time password (OTP) will be dispatched to that address.")
+    @ApiResponse(responseCode = "400", description = "The request payload is malformed or contains invalid field values. Refer to the error details for correction.")
     @PostMapping("/forgot-password")
     public ResponseEntity<Void> forgotPassword(
             @RequestBody @Valid ForgotPasswordRequestDTO request
@@ -37,8 +37,8 @@ public class PasswordResetController {
     @Operation(
             summary = "Reset password — verifies OTP and sets new password"
     )
-    @ApiResponse(responseCode = "204", description = "Password reset successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid or expired OTP, or new password same as old")
+    @ApiResponse(responseCode = "204", description = "The password has been successfully reset. The user may now authenticate using the new credentials. No content is returned.")
+    @ApiResponse(responseCode = "400", description = "The request could not be processed. Possible causes include an invalid or expired OTP, or a new password that is identical to the current password.")
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(
             @RequestBody @Valid ResetPasswordRequestDTO request
