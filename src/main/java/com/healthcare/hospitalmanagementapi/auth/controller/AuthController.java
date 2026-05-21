@@ -2,6 +2,7 @@ package com.healthcare.hospitalmanagementapi.auth.controller;
 
 import com.healthcare.hospitalmanagementapi.auth.dto.*;
 import com.healthcare.hospitalmanagementapi.auth.service.AuthService;
+import com.healthcare.hospitalmanagementapi.common.exception.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -16,6 +17,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@ApiResponse(
+        responseCode = "429",
+        description = "Too many requests. Auth endpoints are limited to 5 requests per minute per IP.",
+        content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)
+        )
+)
 @Tag(name = "Authentication", description = "Authentication APIs for login, refresh and logout")
 public class AuthController {
 

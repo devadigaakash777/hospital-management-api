@@ -1,5 +1,6 @@
 package com.healthcare.hospitalmanagementapi.department.controller;
 
+import com.healthcare.hospitalmanagementapi.common.exception.dto.ErrorResponse;
 import com.healthcare.hospitalmanagementapi.common.response.PageResponse;
 import com.healthcare.hospitalmanagementapi.department.dto.*;
 import com.healthcare.hospitalmanagementapi.department.service.DepartmentService;
@@ -25,6 +26,14 @@ import java.util.UUID;
         responseCode = "401",
         description = "Authentication required — no valid credentials were provided. Ensure a valid Bearer token is included in the Authorization header.",
         content = @Content
+)
+@ApiResponse(
+        responseCode = "429",
+        description = "Too many requests. Auth endpoints are limited to 100 requests per minute per IP.",
+        content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)
+        )
 )
 public class DepartmentController {
 
