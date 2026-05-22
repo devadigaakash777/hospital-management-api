@@ -20,7 +20,6 @@ public class CreateUserRequestDTO {
     @Schema(example = "John", description = "First name of the user")
     private String firstName;
 
-    @NotBlank
     @Size(max = 100)
     @Schema(example = "Doe", description = "Last name of the user")
     private String lastName;

@@ -1,0 +1,5 @@
+ALTER TABLE users
+    ALTER COLUMN last_name DROP NOT NULL;
+
+ALTER TABLE patients
+    ALTER COLUMN last_name DROP NOT NULL;

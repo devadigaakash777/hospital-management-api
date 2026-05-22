@@ -111,7 +111,6 @@ class PatientControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors.firstName").exists())
-                .andExpect(jsonPath("$.errors.lastName").exists())
                 .andExpect(jsonPath("$.errors.email").exists());
     }
 

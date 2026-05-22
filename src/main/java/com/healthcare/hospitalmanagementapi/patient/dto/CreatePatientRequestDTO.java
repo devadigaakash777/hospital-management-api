@@ -21,15 +21,14 @@ public class CreatePatientRequestDTO {
     @Size(max = 150)
     @Schema(
             description = "Patient first name",
-            example = "Akash"
+            example = "James"
     )
     private String firstName;
 
-    @NotBlank
     @Size(max = 150)
     @Schema(
             description = "Patient last name",
-            example = "Devadiga"
+            example = "Doe"
     )
     private String lastName;
 
@@ -44,7 +43,7 @@ public class CreatePatientRequestDTO {
     @Size(max = 150)
     @Schema(
             description = "Patient email address",
-            example = "akash@example.com"
+            example = "james@example.com"
     )
     private String email;
 }
