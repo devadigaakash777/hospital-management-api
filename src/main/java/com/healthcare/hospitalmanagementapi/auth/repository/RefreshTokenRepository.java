@@ -17,7 +17,19 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
 
     Optional<RefreshToken> findByRefreshTokenAndIsRevokedFalse(String token);
 
+    @Query("""
+    SELECT rt
+    FROM RefreshToken rt
+    JOIN FETCH rt.user
+    WHERE rt.refreshToken = :token
+    """)
+    Optional<RefreshToken> findByRefreshToken(
+            @Param("token") String token
+    );
+
     void deleteByExpiryDateBefore(Instant now);
 
     List<RefreshToken> findAllByUser_Id(UUID userId);
+
+    List<RefreshToken> findAllByUser_IdAndIsRevokedFalse(UUID userId);
 }
