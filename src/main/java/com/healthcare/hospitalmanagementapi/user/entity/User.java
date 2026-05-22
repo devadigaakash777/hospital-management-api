@@ -75,6 +75,10 @@ public class User extends BaseEntity {
     private Boolean canManageHealthPackages = false;
 
     @Builder.Default
+    @Column(name = "can_manage_appointments")
+    private Boolean canManageAppointments = false;
+
+    @Builder.Default
     @ManyToMany
     @JoinTable(
             name = "user_departments",

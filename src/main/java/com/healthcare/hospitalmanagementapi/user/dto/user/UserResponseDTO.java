@@ -43,6 +43,8 @@ public class UserResponseDTO {
 
     private Boolean canManageHealthPackages;
 
+    private Boolean canManageAppointments;
+
     private UserGroupSummaryDTO group;
 
     private Set<DepartmentResponseDTO> departments;

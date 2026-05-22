@@ -55,4 +55,7 @@ public class CreateUserRequestDTO {
 
     @Schema(description = "Permission to manage health packages")
     private Boolean canManageHealthPackages;
+
+    @Schema(description = "Permission to manage appointments")
+    private Boolean canManageAppointments;
 }

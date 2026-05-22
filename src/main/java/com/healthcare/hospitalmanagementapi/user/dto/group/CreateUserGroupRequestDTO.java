@@ -32,4 +32,6 @@ public class CreateUserGroupRequestDTO {
     private Boolean canExportReports;
 
     private Boolean canManageHealthPackages;
+
+    private Boolean canManageAppointments;
 }

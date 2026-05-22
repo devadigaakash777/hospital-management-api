@@ -43,6 +43,10 @@ public class UserGroup extends BaseEntity {
     @Column(name = "can_manage_health_packages")
     private Boolean canManageHealthPackages = false;
 
+    @Builder.Default
+    @Column(name = "can_manage_appointments")
+    private Boolean canManageAppointments = false;
+
     @ManyToMany
     @JoinTable(
             name = "group_departments",

@@ -38,6 +38,9 @@ public class CustomUserDetails implements UserDetails {
         if(Boolean.TRUE.equals(user.getCanManageHealthPackages()))
             authorities.add(new SimpleGrantedAuthority("CAN_MANAGE_HEALTH_PACKAGES"));
 
+        if(Boolean.TRUE.equals(user.getCanManageAppointments()))
+            authorities.add(new SimpleGrantedAuthority("CAN_MANAGE_APPOINTMENTS"));
+
         return authorities;
     }
 

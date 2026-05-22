@@ -30,4 +30,6 @@ public class UpdateUserGroupRequestDTO {
     private Boolean canExportReports;
 
     private Boolean canManageHealthPackages;
+
+    private Boolean canManageAppointments;
 }
