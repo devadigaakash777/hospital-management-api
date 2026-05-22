@@ -63,7 +63,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldCreateAppointment_whenValidRequest() throws Exception {
         CreateAppointmentRequestDTO request = CreateAppointmentRequestDTO.builder()
                 .patientId(UUID.randomUUID())
@@ -83,7 +83,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldReturnBadRequest_whenCreateAppointmentWithInvalidBody() throws Exception {
         CreateAppointmentRequestDTO request = CreateAppointmentRequestDTO.builder().build();
 
@@ -99,7 +99,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldReturnConflict_whenDoctorBlockedDate() throws Exception {
         CreateAppointmentRequestDTO request = CreateAppointmentRequestDTO.builder()
                 .patientId(UUID.randomUUID())
@@ -120,7 +120,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldReturnConflict_whenDoctorTimeSlotBlocked() throws Exception {
         CreateAppointmentRequestDTO request = CreateAppointmentRequestDTO.builder()
                 .patientId(UUID.randomUUID())
@@ -141,7 +141,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldGetAppointmentById_whenAppointmentExists() throws Exception {
         when(appointmentService.getAppointmentById(appointmentId)).thenReturn(response);
 
@@ -151,7 +151,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldReturnNotFound_whenAppointmentDoesNotExist() throws Exception {
         when(appointmentService.getAppointmentById(appointmentId))
                 .thenThrow(new ResourceNotFoundException("Appointment not found"));
@@ -163,7 +163,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldGetAllAppointments_whenPaginationRequested() throws Exception {
         PageResponse<AppointmentResponseDTO> page = new PageResponse<>(
                 new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1)
@@ -182,7 +182,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldUpdateAppointment_whenValidRequest() throws Exception {
         UpdateAppointmentRequestDTO request = UpdateAppointmentRequestDTO.builder()
                 .appointmentStatus(com.healthcare.hospitalmanagementapi.enums.AppointmentStatus.ADMITTED)
@@ -198,7 +198,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldReturnConflict_whenInvalidAppointmentTransition() throws Exception {
         when(appointmentService.updateAppointment(eq(appointmentId), any()))
                 .thenThrow(new ConflictException("Invalid status transition from ADMITTED to CONFIRMED"));
@@ -212,7 +212,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldDeleteAppointment_whenAppointmentExists() throws Exception {
         doNothing().when(appointmentService).deleteAppointment(appointmentId);
 
@@ -221,7 +221,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldRestoreAppointment_whenDeletedAppointmentExists() throws Exception {
         when(appointmentService.restoreAppointment(appointmentId)).thenReturn(response);
 
@@ -231,7 +231,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = "CAN_MANAGE_APPOINTMENTS")
     void shouldReturnConflict_whenRestoreAlreadyActiveAppointment() throws Exception {
         when(appointmentService.restoreAppointment(appointmentId))
                 .thenThrow(new ConflictException("Appointment is already active"));
